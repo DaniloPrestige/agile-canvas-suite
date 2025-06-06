@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Edit, Flag, Clock, User, DollarSign } from 'lucide-react';
@@ -33,7 +32,6 @@ const ProjectDetails: React.FC = () => {
       const projectData = db.getProject(id);
       if (projectData) {
         setProject(projectData);
-        updateProjectProgress();
       }
     }
   };
@@ -54,6 +52,7 @@ const ProjectDetails: React.FC = () => {
     db.updateProject(id, { progress });
     db.addHistoryEntry(id, 'system', `Progresso atualizado para ${progress}%`);
     
+    // Only reload project data, don't call updateProjectProgress again
     loadProject();
     loadHistory();
   };
