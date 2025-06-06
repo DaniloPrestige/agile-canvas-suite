@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Edit, Flag, Clock, User, DollarSign } from 'lucide-react';
@@ -19,49 +20,96 @@ const ProjectDetails: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('ProjectDetails mounted, id:', id);
     if (id) {
       loadProject();
       loadHistory();
+    } else {
+      setError('ID do projeto não fornecido');
+      setLoading(false);
     }
   }, [id]);
 
   const loadProject = () => {
-    if (id) {
-      const projectData = db.getProject(id);
-      if (projectData) {
-        setProject(projectData);
+    try {
+      console.log('Loading project with id:', id);
+      if (id) {
+        const projectData = db.getProject(id);
+        console.log('Project data:', projectData);
+        if (projectData) {
+          setProject(projectData);
+          setError(null);
+        } else {
+          setError('Projeto não encontrado');
+        }
       }
+    } catch (err) {
+      console.error('Error loading project:', err);
+      setError('Erro ao carregar projeto');
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadHistory = () => {
-    if (id) {
-      setHistory(db.getProjectHistory(id));
+    try {
+      if (id) {
+        const historyData = db.getProjectHistory(id);
+        console.log('History data:', historyData);
+        setHistory(historyData);
+      }
+    } catch (err) {
+      console.error('Error loading history:', err);
     }
   };
 
   const updateProjectProgress = () => {
     if (!id) return;
     
-    const tasks = db.getProjectTasks(id);
-    const completedTasks = tasks.filter(task => task.status === 'Concluída');
-    const progress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
-    
-    db.updateProject(id, { progress });
-    db.addHistoryEntry(id, 'system', `Progresso atualizado para ${progress}%`);
-    
-    // Only reload project data, don't call updateProjectProgress again
-    loadProject();
-    loadHistory();
+    try {
+      console.log('Updating project progress for:', id);
+      const tasks = db.getProjectTasks(id);
+      const completedTasks = tasks.filter(task => task.status === 'Concluída');
+      const progress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
+      
+      db.updateProject(id, { progress });
+      db.addHistoryEntry(id, 'system', `Progresso atualizado para ${progress}%`);
+      
+      // Reload data
+      loadProject();
+      loadHistory();
+    } catch (err) {
+      console.error('Error updating progress:', err);
+    }
   };
 
-  if (!project) {
+  if (loading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Projeto não encontrado</p>
+          <p className="text-muted-foreground">Carregando projeto...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">{error || 'Projeto não encontrado'}</p>
+            <Link to="/">
+              <Button variant="outline">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar para Lista
+              </Button>
+            </Link>
+          </div>
         </div>
       </Layout>
     );

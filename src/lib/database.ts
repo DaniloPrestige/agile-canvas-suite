@@ -1,4 +1,3 @@
-
 // Database setup for local SQLite storage
 export interface Project {
   id: string;
@@ -70,6 +69,68 @@ class LocalDatabase {
   constructor() {
     // Load data from localStorage if available
     this.loadData();
+    
+    // Create sample data if no projects exist
+    if (this.projects.length === 0) {
+      this.createSampleData();
+    }
+  }
+
+  private createSampleData() {
+    const sampleProject = this.createProject({
+      name: 'Sistema de Gestão de Projetos',
+      client: 'Empresa Exemplo',
+      responsible: 'João Silva',
+      priority: 'Alta',
+      status: 'Em Progresso',
+      phase: 'Execução',
+      startDate: '2024-01-01',
+      endDate: '2024-12-31',
+      estimatedValue: 50000,
+      finalValue: 0,
+      currency: 'BRL',
+      description: 'Desenvolvimento de um sistema completo para gestão de projetos empresariais.',
+      tags: ['desenvolvimento', 'sistema', 'gestão'],
+      progress: 30
+    });
+
+    // Add some sample tasks
+    this.createTask({
+      projectId: sampleProject.id,
+      name: 'Análise de Requisitos',
+      description: 'Levantamento completo dos requisitos do sistema',
+      status: 'Concluída',
+      dueDate: '2024-02-15',
+      priority: 'Alta'
+    });
+
+    this.createTask({
+      projectId: sampleProject.id,
+      name: 'Desenvolvimento do Frontend',
+      description: 'Criação da interface do usuário',
+      status: 'Em Progresso',
+      dueDate: '2024-06-30',
+      priority: 'Alta'
+    });
+
+    this.createTask({
+      projectId: sampleProject.id,
+      name: 'Testes do Sistema',
+      description: 'Testes funcionais e de integração',
+      status: 'Pendente',
+      dueDate: '2024-11-30',
+      priority: 'Média'
+    });
+
+    // Add sample comment
+    this.createComment({
+      projectId: sampleProject.id,
+      userId: 'user-1',
+      text: 'Projeto iniciado com sucesso. Equipe alinhada com os objetivos.'
+    });
+
+    // Add history entry
+    this.addHistoryEntry(sampleProject.id, 'system', 'Projeto criado com dados de exemplo');
   }
 
   private loadData() {
