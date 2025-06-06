@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,10 +40,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
     project?.endDate ? new Date(project.endDate) : undefined
   );
 
+  const formatCurrencyInput = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    const amount = parseFloat(numbers) / 100;
+    return amount.toFixed(2);
+  };
+
   const handleValueChange = (value: string, field: 'estimatedValue' | 'finalValue') => {
-    // Remove qualquer caractere que não seja número ou vírgula/ponto
-    const cleanValue = value.replace(/[^\d.,]/g, '');
-    setFormData({ ...formData, [field]: cleanValue });
+    if (value === '') {
+      setFormData({ ...formData, [field]: '' });
+    } else {
+      const formatted = formatCurrencyInput(value);
+      setFormData({ ...formData, [field]: formatted });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -162,12 +170,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
                 {startDate ? format(startDate, "dd/MM/yyyy") : "Selecione a data"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 z-50" align="start">
               <Calendar
                 mode="single"
                 selected={startDate}
                 onSelect={setStartDate}
                 initialFocus
+                className={cn("p-3")}
               />
             </PopoverContent>
           </Popover>
@@ -188,12 +197,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
                 {endDate ? format(endDate, "dd/MM/yyyy") : "Selecione a data"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 z-50" align="start">
               <Calendar
                 mode="single"
                 selected={endDate}
                 onSelect={setEndDate}
                 initialFocus
+                className={cn("p-3")}
                 disabled={(date) => startDate ? date < startDate : false}
               />
             </PopoverContent>

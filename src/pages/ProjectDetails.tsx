@@ -1,35 +1,62 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Calendar, User, Building, Flag, Clock, DollarSign } from 'lucide-react';
+import { ArrowLeft, Edit } from 'lucide-react';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProgressBar from '../components/ProgressBar';
-import { db, Project, formatCurrency } from '../lib/database';
+import ProjectForm from '../components/ProjectForm';
+import TaskManager from '../components/TaskManager';
+import CommentManager from '../components/CommentManager';
+import FileManager from '../components/FileManager';
+import { db, Project, formatCurrency, Task, HistoryEntry } from '../lib/database';
 
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
-  const [tasks, setTasks] = useState([]);
-  const [comments, setComments] = useState([]);
-  const [files, setFiles] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
+    if (id) {
+      loadProject();
+      loadHistory();
+    }
+  }, [id]);
+
+  const loadProject = () => {
     if (id) {
       const projectData = db.getProject(id);
       if (projectData) {
         setProject(projectData);
-        setTasks(db.getProjectTasks(id));
-        setComments(db.getProjectComments(id));
-        setFiles(db.getProjectFiles(id));
-        setHistory(db.getProjectHistory(id));
+        updateProjectProgress();
       }
     }
-  }, [id]);
+  };
+
+  const loadHistory = () => {
+    if (id) {
+      setHistory(db.getProjectHistory(id));
+    }
+  };
+
+  const updateProjectProgress = () => {
+    if (!id) return;
+    
+    const tasks = db.getProjectTasks(id);
+    const completedTasks = tasks.filter(task => task.status === 'Concluída');
+    const progress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
+    
+    db.updateProject(id, { progress });
+    db.addHistoryEntry(id, 'system', `Progresso atualizado para ${progress}%`);
+    
+    loadProject();
+    loadHistory();
+  };
 
   if (!project) {
     return (
@@ -79,10 +106,27 @@ const ProjectDetails: React.FC = () => {
             <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
             <p className="text-muted-foreground">{project.client}</p>
           </div>
-          <Button>
-            <Edit className="w-4 h-4 mr-2" />
-            Editar Projeto
-          </Button>
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <Button onClick={() => setIsEditDialogOpen(true)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Editar Projeto
+            </Button>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Editar Projeto</DialogTitle>
+              </DialogHeader>
+              <ProjectForm 
+                project={project}
+                onSubmit={() => {
+                  setIsEditDialogOpen(false);
+                  loadProject();
+                  db.addHistoryEntry(project.id, 'user', 'Projeto editado');
+                  loadHistory();
+                }}
+                onCancel={() => setIsEditDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Project Overview Cards */}
@@ -232,21 +276,11 @@ const ProjectDetails: React.FC = () => {
           <TabsContent value="tasks" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Tarefas do Projeto</CardTitle>
+                <CardTitle>Gerenciamento de Tarefas</CardTitle>
                 <CardDescription>Gerencie as tarefas relacionadas a este projeto</CardDescription>
               </CardHeader>
               <CardContent>
-                {tasks.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Nenhuma tarefa encontrada</p>
-                    <Button className="mt-4">Adicionar Tarefa</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Lista de tarefas será implementada aqui */}
-                    <p className="text-muted-foreground">Funcionalidade de tarefas em desenvolvimento</p>
-                  </div>
-                )}
+                <TaskManager projectId={project.id} onTaskUpdate={updateProjectProgress} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -254,21 +288,11 @@ const ProjectDetails: React.FC = () => {
           <TabsContent value="comments" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Comentários</CardTitle>
-                <CardDescription>Histórico de comentários do projeto</CardDescription>
+                <CardTitle>Comentários do Projeto</CardTitle>
+                <CardDescription>Histórico de comentários e discussões</CardDescription>
               </CardHeader>
               <CardContent>
-                {comments.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Nenhum comentário encontrado</p>
-                    <Button className="mt-4">Adicionar Comentário</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Lista de comentários será implementada aqui */}
-                    <p className="text-muted-foreground">Funcionalidade de comentários em desenvolvimento</p>
-                  </div>
-                )}
+                <CommentManager projectId={project.id} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -276,21 +300,11 @@ const ProjectDetails: React.FC = () => {
           <TabsContent value="files" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Arquivos</CardTitle>
+                <CardTitle>Arquivos do Projeto</CardTitle>
                 <CardDescription>Documentos e arquivos relacionados ao projeto</CardDescription>
               </CardHeader>
               <CardContent>
-                {files.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Nenhum arquivo encontrado</p>
-                    <Button className="mt-4">Fazer Upload</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Lista de arquivos será implementada aqui */}
-                    <p className="text-muted-foreground">Funcionalidade de arquivos em desenvolvimento</p>
-                  </div>
-                )}
+                <FileManager projectId={project.id} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -298,8 +312,8 @@ const ProjectDetails: React.FC = () => {
           <TabsContent value="history" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Histórico</CardTitle>
-                <CardDescription>Registro de todas as atividades do projeto</CardDescription>
+                <CardTitle>Histórico do Projeto</CardTitle>
+                <CardDescription>Registro completo de todas as atividades</CardDescription>
               </CardHeader>
               <CardContent>
                 {history.length === 0 ? (
@@ -308,8 +322,17 @@ const ProjectDetails: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Lista de histórico será implementada aqui */}
-                    <p className="text-muted-foreground">Funcionalidade de histórico em desenvolvimento</p>
+                    {history.map((entry) => (
+                      <div key={entry.id} className="flex items-start space-x-3 p-3 border rounded-lg">
+                        <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                        <div className="flex-1">
+                          <p className="text-sm">{entry.action}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(entry.timestamp).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
