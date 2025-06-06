@@ -1,3 +1,4 @@
+
 // Database setup for local SQLite storage
 export interface Project {
   id: string;
