@@ -27,10 +27,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
     priority: project?.priority || 'Média' as const,
     status: project?.status || 'Pendente' as const,
     phase: project?.phase || 'Iniciação' as const,
-    startDate: project?.startDate || '',
-    endDate: project?.endDate || '',
-    estimatedValue: project?.estimatedValue || 0,
-    finalValue: project?.finalValue || 0,
+    estimatedValue: project?.estimatedValue?.toString() || '',
+    finalValue: project?.finalValue?.toString() || '',
     currency: project?.currency || 'BRL' as const,
     description: project?.description || '',
     tags: project?.tags || [] as string[],
@@ -43,6 +41,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
     project?.endDate ? new Date(project.endDate) : undefined
   );
 
+  const handleValueChange = (value: string, field: 'estimatedValue' | 'finalValue') => {
+    // Remove qualquer caractere que não seja número ou vírgula/ponto
+    const cleanValue = value.replace(/[^\d.,]/g, '');
+    setFormData({ ...formData, [field]: cleanValue });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -50,6 +54,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
       ...formData,
       startDate: startDate ? startDate.toISOString().split('T')[0] : '',
       endDate: endDate ? endDate.toISOString().split('T')[0] : '',
+      estimatedValue: parseFloat(formData.estimatedValue.replace(',', '.')) || 0,
+      finalValue: parseFloat(formData.finalValue.replace(',', '.')) || 0,
       progress: project?.progress || 0,
     };
 
@@ -145,6 +151,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
           <Popover>
             <PopoverTrigger asChild>
               <Button
+                type="button"
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
@@ -155,7 +162,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
                 {startDate ? format(startDate, "dd/MM/yyyy") : "Selecione a data"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
                 selected={startDate}
@@ -170,6 +177,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
           <Popover>
             <PopoverTrigger asChild>
               <Button
+                type="button"
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
@@ -180,12 +188,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
                 {endDate ? format(endDate, "dd/MM/yyyy") : "Selecione a data"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
                 selected={endDate}
                 onSelect={setEndDate}
                 initialFocus
+                disabled={(date) => startDate ? date < startDate : false}
               />
             </PopoverContent>
           </Popover>
@@ -197,20 +206,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
           <Label htmlFor="estimatedValue">Valor Estimado</Label>
           <Input
             id="estimatedValue"
-            type="number"
-            step="0.01"
+            type="text"
+            placeholder="0,00"
             value={formData.estimatedValue}
-            onChange={(e) => setFormData({ ...formData, estimatedValue: parseFloat(e.target.value) || 0 })}
+            onChange={(e) => handleValueChange(e.target.value, 'estimatedValue')}
           />
         </div>
         <div>
           <Label htmlFor="finalValue">Valor Final</Label>
           <Input
             id="finalValue"
-            type="number"
-            step="0.01"
+            type="text"
+            placeholder="0,00"
             value={formData.finalValue}
-            onChange={(e) => setFormData({ ...formData, finalValue: parseFloat(e.target.value) || 0 })}
+            onChange={(e) => handleValueChange(e.target.value, 'finalValue')}
           />
         </div>
         <div>
@@ -220,9 +229,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="BRL">Real (R$)</SelectItem>
-              <SelectItem value="USD">Dólar ($)</SelectItem>
-              <SelectItem value="EUR">Euro (€)</SelectItem>
+              <SelectItem value="BRL">Real (BRL)</SelectItem>
+              <SelectItem value="USD">Dólar (USD)</SelectItem>
+              <SelectItem value="EUR">Euro (EUR)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -234,12 +243,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
           id="description"
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          rows={3}
+          placeholder="Descreva o projeto..."
+          rows={4}
         />
       </div>
 
       <div>
-        <Label htmlFor="tags">Tags</Label>
+        <Label>Tags</Label>
         <TagInput
           tags={formData.tags}
           onChange={(tags) => setFormData({ ...formData, tags })}
@@ -247,7 +257,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
         />
       </div>
 
-      <div className="flex justify-end space-x-4">
+      <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>
