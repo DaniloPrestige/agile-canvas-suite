@@ -24,9 +24,9 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    status: 'Pendente' as const,
+    status: 'Pendente' as 'Pendente' | 'Em Progresso' | 'Concluída',
     dueDate: '',
-    priority: 'Média' as const,
+    priority: 'Média' as 'Alta' | 'Média' | 'Baixa',
   });
 
   const loadTasks = () => {
@@ -55,9 +55,9 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
     setFormData({
       name: '',
       description: '',
-      status: 'Pendente' as const,
+      status: 'Pendente',
       dueDate: '',
-      priority: 'Média' as const,
+      priority: 'Média',
     });
     setEditingTask(null);
     setIsDialogOpen(false);
