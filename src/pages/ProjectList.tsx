@@ -15,6 +15,9 @@ const ProjectList: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'deleted'>('active');
 
   useEffect(() => {
     loadProjects();
@@ -26,8 +29,18 @@ const ProjectList: React.FC = () => {
   };
 
   const getFilteredProjects = () => {
-    let filtered = projects.filter(p => !p.isDeleted);
+    let filtered = projects;
 
+    // Filter by tab
+    if (activeTab === 'active') {
+      filtered = filtered.filter(p => p.status !== 'Concluído' && !p.isDeleted);
+    } else if (activeTab === 'finished') {
+      filtered = filtered.filter(p => p.status === 'Concluído' && !p.isDeleted);
+    } else if (activeTab === 'deleted') {
+      filtered = filtered.filter(p => p.isDeleted);
+    }
+
+    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(project =>
         project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -36,7 +49,29 @@ const ProjectList: React.FC = () => {
       );
     }
 
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(project => project.status === statusFilter);
+    }
+
+    // Filter by priority
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter(project => project.priority === priorityFilter);
+    }
+
     return filtered;
+  };
+
+  const getTabCounts = () => {
+    const activeProjects = projects.filter(p => p.status !== 'Concluído' && !p.isDeleted);
+    const finishedProjects = projects.filter(p => p.status === 'Concluído' && !p.isDeleted);
+    const deletedProjects = projects.filter(p => p.isDeleted);
+
+    return {
+      active: activeProjects.length,
+      finished: finishedProjects.length,
+      deleted: deletedProjects.length
+    };
   };
 
   const getStatusCounts = () => {
@@ -45,8 +80,9 @@ const ProjectList: React.FC = () => {
     const inProgress = activeProjects.filter(p => p.status === 'Em Progresso').length;
     const pending = activeProjects.filter(p => p.status === 'Pendente').length;
     const completed = activeProjects.filter(p => p.status === 'Concluído').length;
+    const delayed = activeProjects.filter(p => p.status === 'Atrasado').length;
 
-    return { totalProjects, inProgress, pending, completed };
+    return { totalProjects, inProgress, pending, completed, delayed };
   };
 
   const getStatusColor = (status: string) => {
@@ -78,6 +114,7 @@ const ProjectList: React.FC = () => {
   };
 
   const statusCounts = getStatusCounts();
+  const tabCounts = getTabCounts();
   const filteredProjects = getFilteredProjects();
 
   return (
@@ -86,14 +123,14 @@ const ProjectList: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Projetos</h1>
+            <h1 className="text-3xl font-bold text-foreground">Projetos</h1>
             <p className="text-muted-foreground">Gerencie todos os seus projetos em um só lugar</p>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <Button onClick={() => setIsCreateDialogOpen(true)}>
-              Adicionar Projeto
+              + Adicionar Projeto
             </Button>
-            <DialogContent className="max-w-4xl h-[90vh] overflow-hidden">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
               <DialogHeader className="px-6 py-4 border-b">
                 <DialogTitle>Adicionar Novo Projeto</DialogTitle>
               </DialogHeader>
@@ -110,8 +147,42 @@ const ProjectList: React.FC = () => {
           </Dialog>
         </div>
 
+        {/* Tabs */}
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors ${
+              activeTab === 'active'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Projetos Ativos
+          </button>
+          <button
+            onClick={() => setActiveTab('finished')}
+            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors ${
+              activeTab === 'finished'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Finalizados
+          </button>
+          <button
+            onClick={() => setActiveTab('deleted')}
+            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors ${
+              activeTab === 'deleted'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Excluídos
+          </button>
+        </div>
+
         {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <StatusCard 
             title="Total de Projetos" 
             count={statusCounts.totalProjects} 
@@ -132,17 +203,45 @@ const ProjectList: React.FC = () => {
             count={statusCounts.completed} 
             color="green"
           />
+          <StatusCard 
+            title="Atrasados" 
+            count={statusCounts.delayed} 
+            color="red"
+          />
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Buscar projetos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        {/* Filters */}
+        <div className="flex gap-4 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Nome, responsável ou descrição..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm min-w-[150px]"
+          >
+            <option value="all">Todos os status</option>
+            <option value="Pendente">Pendente</option>
+            <option value="Em Progresso">Em Progresso</option>
+            <option value="Atrasado">Atrasado</option>
+            <option value="Concluído">Concluído</option>
+          </select>
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm min-w-[180px]"
+          >
+            <option value="all">Todas as prioridades</option>
+            <option value="Alta">Alta</option>
+            <option value="Média">Média</option>
+            <option value="Baixa">Baixa</option>
+          </select>
         </div>
 
         {/* Projects Grid */}
@@ -192,6 +291,11 @@ const ProjectList: React.FC = () => {
                       <Badge className={getStatusColor(project.status)}>
                         {project.status}
                       </Badge>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Fase:</span>
+                      <span className="text-sm font-medium">{project.phase}</span>
                     </div>
 
                     <div>
