@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Edit, Flag, Clock, User, DollarSign } from 'lucide-react';
@@ -197,20 +196,21 @@ const ProjectDetails: React.FC = () => {
               <Edit className="w-4 h-4 mr-2" />
               Editar Projeto
             </Button>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+            <DialogContent className="max-w-4xl h-[90vh] p-0">
+              <DialogHeader className="px-6 py-4 border-b">
                 <DialogTitle>Editar Projeto</DialogTitle>
               </DialogHeader>
-              <ProjectForm 
-                project={project}
-                onSubmit={() => {
-                  setIsEditDialogOpen(false);
-                  loadProject();
-                  db.addHistoryEntry(project.id, 'user', 'Projeto editado');
-                  loadHistory();
-                }}
-                onCancel={() => setIsEditDialogOpen(false)}
-              />
+              <div className="flex-1 overflow-hidden">
+                <ProjectForm 
+                  project={project}
+                  onSubmit={() => {
+                    setIsEditDialogOpen(false);
+                    loadProject();
+                    loadHistory();
+                  }}
+                  onCancel={() => setIsEditDialogOpen(false)}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         </div>

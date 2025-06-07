@@ -180,6 +180,7 @@ class LocalDatabase {
     };
     this.projects.push(newProject);
     this.saveData();
+    this.addHistoryEntry(newProject.id, 'user', 'Projeto criado');
     return newProject;
   }
 
@@ -215,6 +216,13 @@ class LocalDatabase {
       updatedAt: new Date().toISOString(),
     };
     this.saveData();
+    
+    // Add detailed history entry
+    const changedFields = Object.keys(updates);
+    if (changedFields.length > 0) {
+      this.addHistoryEntry(id, 'user', `Projeto atualizado: ${changedFields.join(', ')}`);
+    }
+    
     return this.projects[projectIndex];
   }
 
@@ -225,6 +233,7 @@ class LocalDatabase {
     }
     project.isDeleted = true;
     this.saveData();
+    this.addHistoryEntry(id, 'user', 'Projeto movido para lixeira');
     return true;
   }
 
@@ -236,6 +245,7 @@ class LocalDatabase {
     this.projects[projectIndex].isFinished = true;
     this.projects[projectIndex].isDeleted = false;
     this.saveData();
+    this.addHistoryEntry(id, 'user', 'Projeto finalizado');
     return true;
   }
 
@@ -247,6 +257,7 @@ class LocalDatabase {
     this.projects[projectIndex].isDeleted = false;
     this.projects[projectIndex].isFinished = false;
     this.saveData();
+    this.addHistoryEntry(id, 'user', 'Projeto restaurado para ativos');
     return true;
   }
 
@@ -258,6 +269,7 @@ class LocalDatabase {
     this.projects[projectIndex].isDeleted = true;
     this.projects[projectIndex].isFinished = false;
     this.saveData();
+    this.addHistoryEntry(id, 'user', 'Projeto movido para lixeira');
     return true;
   }
 
@@ -266,6 +278,7 @@ class LocalDatabase {
     if (projectIndex === -1) {
       return false;
     }
+    this.addHistoryEntry(id, 'user', 'Projeto excluído permanentemente');
     this.projects.splice(projectIndex, 1);
     this.saveData();
     return true;
@@ -281,6 +294,7 @@ class LocalDatabase {
     };
     this.tasks.push(newTask);
     this.saveData();
+    this.addHistoryEntry(taskData.projectId, 'user', `Nova tarefa criada: ${taskData.name}`);
     return newTask;
   }
 
@@ -298,12 +312,21 @@ class LocalDatabase {
       return undefined;
     }
 
+    const oldTask = this.tasks[taskIndex];
     this.tasks[taskIndex] = {
       ...this.tasks[taskIndex],
       ...updates,
       updatedAt: new Date().toISOString(),
     };
     this.saveData();
+    
+    // Add history entry for task updates
+    if (updates.status && updates.status !== oldTask.status) {
+      this.addHistoryEntry(oldTask.projectId, 'user', `Tarefa "${oldTask.name}" alterada para ${updates.status}`);
+    } else {
+      this.addHistoryEntry(oldTask.projectId, 'user', `Tarefa "${oldTask.name}" atualizada`);
+    }
+    
     return this.tasks[taskIndex];
   }
 
@@ -313,6 +336,8 @@ class LocalDatabase {
       return false;
     }
 
+    const task = this.tasks[taskIndex];
+    this.addHistoryEntry(task.projectId, 'user', `Tarefa "${task.name}" excluída`);
     this.tasks.splice(taskIndex, 1);
     this.saveData();
     return true;
@@ -327,6 +352,7 @@ class LocalDatabase {
     };
     this.comments.push(newComment);
     this.saveData();
+    this.addHistoryEntry(commentData.projectId, 'user', 'Novo comentário adicionado');
     return newComment;
   }
 
@@ -344,11 +370,13 @@ class LocalDatabase {
       return undefined;
     }
 
+    const comment = this.comments[commentIndex];
     this.comments[commentIndex] = {
       ...this.comments[commentIndex],
       ...updates,
     };
     this.saveData();
+    this.addHistoryEntry(comment.projectId, 'user', 'Comentário editado');
     return this.comments[commentIndex];
   }
 
@@ -358,6 +386,8 @@ class LocalDatabase {
       return false;
     }
 
+    const comment = this.comments[commentIndex];
+    this.addHistoryEntry(comment.projectId, 'user', 'Comentário excluído');
     this.comments.splice(commentIndex, 1);
     this.saveData();
     return true;
@@ -372,6 +402,7 @@ class LocalDatabase {
     };
     this.files.push(newFile);
     this.saveData();
+    this.addHistoryEntry(fileData.projectId, 'user', `Arquivo "${fileData.filename}" adicionado`);
     return newFile;
   }
 
@@ -389,6 +420,8 @@ class LocalDatabase {
       return false;
     }
 
+    const file = this.files[fileIndex];
+    this.addHistoryEntry(file.projectId, 'user', `Arquivo "${file.filename}" excluído`);
     this.files.splice(fileIndex, 1);
     this.saveData();
     return true;
