@@ -57,6 +57,7 @@ export interface HistoryEntry {
   userId: string;
   action: string;
   timestamp: string;
+  details?: any;
 }
 
 class LocalDatabase {
@@ -69,68 +70,6 @@ class LocalDatabase {
   constructor() {
     // Load data from localStorage if available
     this.loadData();
-    
-    // Create sample data if no projects exist
-    if (this.projects.length === 0) {
-      this.createSampleData();
-    }
-  }
-
-  private createSampleData() {
-    const sampleProject = this.createProject({
-      name: 'Sistema de Gestão de Projetos',
-      client: 'Empresa Exemplo',
-      responsible: 'João Silva',
-      priority: 'Alta',
-      status: 'Em Progresso',
-      phase: 'Execução',
-      startDate: '2024-01-01',
-      endDate: '2024-12-31',
-      estimatedValue: 50000,
-      finalValue: 0,
-      currency: 'BRL',
-      description: 'Desenvolvimento de um sistema completo para gestão de projetos empresariais.',
-      tags: ['desenvolvimento', 'sistema', 'gestão'],
-      progress: 30
-    });
-
-    // Add some sample tasks
-    this.createTask({
-      projectId: sampleProject.id,
-      name: 'Análise de Requisitos',
-      description: 'Levantamento completo dos requisitos do sistema',
-      status: 'Concluída',
-      dueDate: '2024-02-15',
-      priority: 'Alta'
-    });
-
-    this.createTask({
-      projectId: sampleProject.id,
-      name: 'Desenvolvimento do Frontend',
-      description: 'Criação da interface do usuário',
-      status: 'Em Progresso',
-      dueDate: '2024-06-30',
-      priority: 'Alta'
-    });
-
-    this.createTask({
-      projectId: sampleProject.id,
-      name: 'Testes do Sistema',
-      description: 'Testes funcionais e de integração',
-      status: 'Pendente',
-      dueDate: '2024-11-30',
-      priority: 'Média'
-    });
-
-    // Add sample comment
-    this.createComment({
-      projectId: sampleProject.id,
-      userId: 'user-1',
-      text: 'Projeto iniciado com sucesso. Equipe alinhada com os objetivos.'
-    });
-
-    // Add history entry
-    this.addHistoryEntry(sampleProject.id, 'system', 'Projeto criado com dados de exemplo');
   }
 
   private loadData() {
@@ -210,6 +149,7 @@ class LocalDatabase {
       return undefined;
     }
 
+    const oldProject = { ...this.projects[projectIndex] };
     this.projects[projectIndex] = {
       ...this.projects[projectIndex],
       ...updates,
@@ -217,10 +157,23 @@ class LocalDatabase {
     };
     this.saveData();
     
-    // Add detailed history entry
-    const changedFields = Object.keys(updates);
-    if (changedFields.length > 0) {
-      this.addHistoryEntry(id, 'user', `Projeto atualizado: ${changedFields.join(', ')}`);
+    // Add detailed history entry for changes
+    const changes: string[] = [];
+    if (oldProject.name !== this.projects[projectIndex].name) changes.push(`Nome alterado de "${oldProject.name}" para "${this.projects[projectIndex].name}"`);
+    if (oldProject.client !== this.projects[projectIndex].client) changes.push(`Cliente alterado de "${oldProject.client}" para "${this.projects[projectIndex].client}"`);
+    if (oldProject.responsible !== this.projects[projectIndex].responsible) changes.push(`Responsável alterado de "${oldProject.responsible}" para "${this.projects[projectIndex].responsible}"`);
+    if (oldProject.status !== this.projects[projectIndex].status) changes.push(`Status alterado de "${oldProject.status}" para "${this.projects[projectIndex].status}"`);
+    if (oldProject.priority !== this.projects[projectIndex].priority) changes.push(`Prioridade alterada de "${oldProject.priority}" para "${this.projects[projectIndex].priority}"`);
+    if (oldProject.phase !== this.projects[projectIndex].phase) changes.push(`Fase alterada de "${oldProject.phase}" para "${this.projects[projectIndex].phase}"`);
+    if (oldProject.progress !== this.projects[projectIndex].progress) changes.push(`Progresso alterado de ${oldProject.progress}% para ${this.projects[projectIndex].progress}%`);
+    if (oldProject.estimatedValue !== this.projects[projectIndex].estimatedValue) changes.push(`Valor estimado alterado`);
+    if (oldProject.finalValue !== this.projects[projectIndex].finalValue) changes.push(`Valor final alterado`);
+    if (oldProject.startDate !== this.projects[projectIndex].startDate) changes.push(`Data de início alterada`);
+    if (oldProject.endDate !== this.projects[projectIndex].endDate) changes.push(`Data de fim alterada`);
+    if (oldProject.description !== this.projects[projectIndex].description) changes.push(`Descrição alterada`);
+    
+    if (changes.length > 0) {
+      this.addHistoryEntry(id, 'user', `Projeto editado: ${changes.join(', ')}`);
     }
     
     return this.projects[projectIndex];
@@ -322,7 +275,7 @@ class LocalDatabase {
     
     // Add history entry for task updates
     if (updates.status && updates.status !== oldTask.status) {
-      this.addHistoryEntry(oldTask.projectId, 'user', `Tarefa "${oldTask.name}" alterada para ${updates.status}`);
+      this.addHistoryEntry(oldTask.projectId, 'user', `Tarefa "${oldTask.name}" alterada de "${oldTask.status}" para "${updates.status}"`);
     } else {
       this.addHistoryEntry(oldTask.projectId, 'user', `Tarefa "${oldTask.name}" atualizada`);
     }
@@ -352,7 +305,7 @@ class LocalDatabase {
     };
     this.comments.push(newComment);
     this.saveData();
-    this.addHistoryEntry(commentData.projectId, 'user', 'Novo comentário adicionado');
+    this.addHistoryEntry(commentData.projectId, commentData.userId, 'Novo comentário adicionado');
     return newComment;
   }
 
@@ -376,7 +329,7 @@ class LocalDatabase {
       ...updates,
     };
     this.saveData();
-    this.addHistoryEntry(comment.projectId, 'user', 'Comentário editado');
+    this.addHistoryEntry(comment.projectId, comment.userId, 'Comentário editado');
     return this.comments[commentIndex];
   }
 
@@ -387,7 +340,7 @@ class LocalDatabase {
     }
 
     const comment = this.comments[commentIndex];
-    this.addHistoryEntry(comment.projectId, 'user', 'Comentário excluído');
+    this.addHistoryEntry(comment.projectId, comment.userId, 'Comentário excluído');
     this.comments.splice(commentIndex, 1);
     this.saveData();
     return true;
@@ -441,7 +394,9 @@ class LocalDatabase {
   }
 
   getProjectHistory(projectId: string): HistoryEntry[] {
-    return this.history.filter((entry) => entry.projectId === projectId);
+    return this.history
+      .filter((entry) => entry.projectId === projectId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 }
 

@@ -82,57 +82,55 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
 
     if (project) {
       db.updateProject(project.id, projectData);
-      db.addHistoryEntry(project.id, 'user', 'Projeto editado');
     } else {
-      const newProject = db.createProject(projectData);
-      db.addHistoryEntry(newProject.id, 'user', 'Projeto criado');
+      db.createProject(projectData);
     }
     
     onSubmit();
   };
 
   return (
-    <div className="max-h-[85vh] overflow-y-auto">
+    <div className="h-full">
       <form onSubmit={handleSubmit} className="space-y-4 p-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="name">Nome do Projeto *</Label>
+            <Label htmlFor="name" className="text-sm">Nome do Projeto *</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="h-8"
+              className="h-8 text-sm"
             />
           </div>
           <div>
-            <Label htmlFor="client">Cliente *</Label>
+            <Label htmlFor="client" className="text-sm">Cliente *</Label>
             <Input
               id="client"
               value={formData.client}
               onChange={(e) => setFormData({ ...formData, client: e.target.value })}
               required
-              className="h-8"
+              className="h-8 text-sm"
             />
           </div>
         </div>
 
         <div>
-          <Label htmlFor="responsible">Responsável *</Label>
+          <Label htmlFor="responsible" className="text-sm">Responsável *</Label>
           <Input
             id="responsible"
             value={formData.responsible}
             onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
             required
-            className="h-8"
+            className="h-8 text-sm"
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <Label htmlFor="priority">Prioridade</Label>
+            <Label htmlFor="priority" className="text-sm">Prioridade</Label>
             <Select value={formData.priority} onValueChange={(value: 'Alta' | 'Média' | 'Baixa') => setFormData({ ...formData, priority: value })}>
-              <SelectTrigger className="h-8">
+              <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -143,9 +141,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
             </Select>
           </div>
           <div>
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status" className="text-sm">Status</Label>
             <Select value={formData.status} onValueChange={(value: 'Em Progresso' | 'Pendente' | 'Concluído' | 'Atrasado') => setFormData({ ...formData, status: value })}>
-              <SelectTrigger className="h-8">
+              <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -157,9 +155,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
             </Select>
           </div>
           <div>
-            <Label htmlFor="phase">Fase</Label>
+            <Label htmlFor="phase" className="text-sm">Fase</Label>
             <Select value={formData.phase} onValueChange={(value: 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento') => setFormData({ ...formData, phase: value })}>
-              <SelectTrigger className="h-8">
+              <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -173,16 +171,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>Data de Início *</Label>
+            <Label className="text-sm">Data de Início *</Label>
             <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal h-8",
+                    "w-full justify-start text-left font-normal h-8 text-sm",
                     !startDate && "text-muted-foreground"
                   )}
                 >
@@ -202,14 +200,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
             </Popover>
           </div>
           <div>
-            <Label>Data de Fim</Label>
+            <Label className="text-sm">Data de Fim</Label>
             <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal h-8",
+                    "w-full justify-start text-left font-normal h-8 text-sm",
                     !endDate && "text-muted-foreground"
                   )}
                 >
@@ -231,33 +229,33 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <Label htmlFor="estimatedValue">Valor Estimado</Label>
+            <Label htmlFor="estimatedValue" className="text-sm">Valor Estimado</Label>
             <Input
               id="estimatedValue"
               type="text"
               placeholder="0,00"
               value={formData.estimatedValue}
               onChange={(e) => handleValueChange(e.target.value, 'estimatedValue')}
-              className="h-8"
+              className="h-8 text-sm"
             />
           </div>
           <div>
-            <Label htmlFor="finalValue">Valor Final</Label>
+            <Label htmlFor="finalValue" className="text-sm">Valor Final</Label>
             <Input
               id="finalValue"
               type="text"
               placeholder="0,00"
               value={formData.finalValue}
               onChange={(e) => handleValueChange(e.target.value, 'finalValue')}
-              className="h-8"
+              className="h-8 text-sm"
             />
           </div>
           <div>
-            <Label htmlFor="currency">Moeda</Label>
+            <Label htmlFor="currency" className="text-sm">Moeda</Label>
             <Select value={formData.currency} onValueChange={(value: 'BRL' | 'USD' | 'EUR') => setFormData({ ...formData, currency: value })}>
-              <SelectTrigger className="h-8">
+              <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -270,19 +268,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
         </div>
 
         <div>
-          <Label htmlFor="description">Descrição</Label>
+          <Label htmlFor="description" className="text-sm">Descrição</Label>
           <Textarea
             id="description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Descreva o projeto..."
-            rows={2}
-            className="resize-none"
+            rows={3}
+            className="resize-none text-sm"
           />
         </div>
 
         <div>
-          <Label>Tags</Label>
+          <Label className="text-sm">Tags</Label>
           <TagInput
             tags={formData.tags}
             onChange={(tags) => setFormData({ ...formData, tags })}
@@ -290,11 +288,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
           />
         </div>
 
-        <div className="flex justify-end space-x-2 pt-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+        <div className="flex justify-end space-x-2 pt-3 border-t">
+          <Button type="button" variant="outline" onClick={onCancel} className="h-8 text-sm">
             Cancelar
           </Button>
-          <Button type="submit">
+          <Button type="submit" className="h-8 text-sm">
             {project ? 'Atualizar' : 'Criar'} Projeto
           </Button>
         </div>
