@@ -125,10 +125,8 @@ const ProjectList: React.FC = () => {
         handlePermanentDelete(project.id);
       }
     }}>
-      <SelectTrigger asChild>
-        <Button variant="outline" size="sm">
-          <ArrowUpDown className="w-4 h-4" />
-        </Button>
+      <SelectTrigger className="w-8 h-8 p-0">
+        <ArrowUpDown className="w-4 h-4" />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="active">Mover para Ativos</SelectItem>
@@ -216,9 +214,27 @@ const ProjectList: React.FC = () => {
                   <Edit className="w-4 h-4" />
                 </Button>
                 <StatusDropdown project={project} type={type as 'finished' | 'deleted'} />
-                <Button variant="outline" size="sm">
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir Permanentemente</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir permanentemente este projeto? Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handlePermanentDelete(project.id)}>
+                        Excluir Permanentemente
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </>
             )}
           </div>
