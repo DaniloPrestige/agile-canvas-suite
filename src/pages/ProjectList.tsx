@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Trash2, CheckCircle, Eye } from 'lucide-react';
+import { Plus, Search, Trash2, CheckCircle, Eye, Edit, ArrowUpDown } from 'lucide-react';
 import Layout from '../components/Layout';
 import StatusCard from '../components/StatusCard';
 import ProgressBar from '../components/ProgressBar';
@@ -18,6 +18,7 @@ const ProjectList: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [deletedProjects, setDeletedProjects] = useState<Project[]>([]);
   const [finishedProjects, setFinishedProjects] = useState<Project[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos os status');
   const [priorityFilter, setPriorityFilter] = useState('Todas as prioridades');
@@ -28,9 +29,15 @@ const ProjectList: React.FC = () => {
   }, []);
 
   const loadProjects = () => {
-    setProjects(db.getActiveProjects());
-    setDeletedProjects(db.getDeletedProjects());
-    setFinishedProjects(db.getFinishedProjects());
+    const active = db.getActiveProjects();
+    const deleted = db.getDeletedProjects();
+    const finished = db.getFinishedProjects();
+    const all = db.getAllProjects();
+    
+    setProjects(active);
+    setDeletedProjects(deleted);
+    setFinishedProjects(finished);
+    setAllProjects(all);
   };
 
   const handleDeleteProject = (id: string) => {
@@ -40,6 +47,21 @@ const ProjectList: React.FC = () => {
 
   const handleFinishProject = (id: string) => {
     db.finishProject(id);
+    loadProjects();
+  };
+
+  const handleRestoreProject = (id: string) => {
+    db.restoreProject(id);
+    loadProjects();
+  };
+
+  const handleMoveToDeleted = (id: string) => {
+    db.moveToDeleted(id);
+    loadProjects();
+  };
+
+  const handlePermanentDelete = (id: string) => {
+    db.permanentDeleteProject(id);
     loadProjects();
   };
 
@@ -57,7 +79,7 @@ const ProjectList: React.FC = () => {
   });
 
   const getStatusStats = () => {
-    const total = projects.length;
+    const total = allProjects.length;
     const inProgress = projects.filter(p => p.status === 'Em Progresso').length;
     const pending = projects.filter(p => p.status === 'Pendente').length;
     const completed = finishedProjects.length;
@@ -91,7 +113,41 @@ const ProjectList: React.FC = () => {
     }
   };
 
-  const ProjectCard = ({ project, showActions = true }: { project: Project; showActions?: boolean }) => (
+  const StatusDropdown = ({ project, type }: { project: Project; type: 'finished' | 'deleted' }) => (
+    <Select onValueChange={(value) => {
+      if (value === 'active') {
+        handleRestoreProject(project.id);
+      } else if (value === 'finished') {
+        handleFinishProject(project.id);
+      } else if (value === 'deleted') {
+        handleMoveToDeleted(project.id);
+      } else if (value === 'permanent') {
+        handlePermanentDelete(project.id);
+      }
+    }}>
+      <SelectTrigger asChild>
+        <Button variant="outline" size="sm">
+          <ArrowUpDown className="w-4 h-4" />
+        </Button>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="active">Mover para Ativos</SelectItem>
+        {type === 'finished' && <SelectItem value="deleted">Mover para Excluídos</SelectItem>}
+        {type === 'deleted' && (
+          <>
+            <SelectItem value="finished">Mover para Finalizados</SelectItem>
+            <SelectItem value="permanent">Excluir Permanentemente</SelectItem>
+          </>
+        )}
+      </SelectContent>
+    </Select>
+  );
+
+  const ProjectCard = ({ project, showActions = true, type = 'active' }: { 
+    project: Project; 
+    showActions?: boolean; 
+    type?: 'active' | 'finished' | 'deleted'
+  }) => (
     <div className="bg-card border rounded-lg p-6 hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
@@ -109,48 +165,62 @@ const ProjectList: React.FC = () => {
                 <Eye className="w-4 h-4" />
               </Button>
             </Link>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+            {type === 'active' ? (
+              <>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <CheckCircle className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Finalizar Projeto</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja finalizar este projeto? Esta ação marcará o projeto como concluído.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleFinishProject(project.id)}>
+                        Finalizar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir Projeto</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir este projeto? O projeto será movido para a lista de excluídos.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteProject(project.id)}>
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            ) : (
+              <>
                 <Button variant="outline" size="sm">
-                  <CheckCircle className="w-4 h-4" />
+                  <Edit className="w-4 h-4" />
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Finalizar Projeto</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja finalizar este projeto? Esta ação marcará o projeto como concluído.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleFinishProject(project.id)}>
-                    Finalizar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+                <StatusDropdown project={project} type={type as 'finished' | 'deleted'} />
                 <Button variant="outline" size="sm">
                   <Trash2 className="w-4 h-4" />
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir Projeto</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja excluir este projeto? O projeto será movido para a lista de excluídos.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleDeleteProject(project.id)}>
-                    Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -230,17 +300,19 @@ const ProjectList: React.FC = () => {
                 Adicionar Projeto
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden">
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Projeto</DialogTitle>
               </DialogHeader>
-              <ProjectForm 
-                onSubmit={() => {
-                  setIsFormOpen(false);
-                  loadProjects();
-                }}
-                onCancel={() => setIsFormOpen(false)}
-              />
+              <div className="overflow-y-auto max-h-[calc(95vh-120px)] px-1">
+                <ProjectForm 
+                  onSubmit={() => {
+                    setIsFormOpen(false);
+                    loadProjects();
+                  }}
+                  onCancel={() => setIsFormOpen(false)}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         </div>
@@ -303,7 +375,7 @@ const ProjectList: React.FC = () => {
             {/* Projects Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <ProjectCard key={project.id} project={project} type="active" />
               ))}
             </div>
 
@@ -317,7 +389,7 @@ const ProjectList: React.FC = () => {
           <TabsContent value="finished" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {finishedProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} showActions={false} />
+                <ProjectCard key={project.id} project={project} type="finished" />
               ))}
             </div>
             {finishedProjects.length === 0 && (
@@ -330,7 +402,7 @@ const ProjectList: React.FC = () => {
           <TabsContent value="deleted" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {deletedProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} showActions={false} />
+                <ProjectCard key={project.id} project={project} type="deleted" />
               ))}
             </div>
             {deletedProjects.length === 0 && (

@@ -6,7 +6,7 @@ export interface Project {
   responsible: string;
   priority: 'Alta' | 'Média' | 'Baixa';
   status: 'Em Progresso' | 'Pendente' | 'Concluído' | 'Atrasado';
-  phase: 'Iniciação' | 'Planejamento' | 'Execução' | 'Encerramento';
+  phase: 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento';
   startDate: string;
   endDate: string;
   estimatedValue: number;
@@ -187,6 +187,10 @@ class LocalDatabase {
     return this.projects.find((project) => project.id === id && !project.isDeleted);
   }
 
+  getAllProjects(): Project[] {
+    return this.projects.filter((project) => !project.isDeleted);
+  }
+
   getActiveProjects(): Project[] {
     return this.projects.filter((project) => !project.isDeleted && !project.isFinished);
   }
@@ -200,7 +204,7 @@ class LocalDatabase {
   }
 
   updateProject(id: string, updates: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>>): Project | undefined {
-    const projectIndex = this.projects.findIndex((project) => project.id === id && !project.isDeleted);
+    const projectIndex = this.projects.findIndex((project) => project.id === id);
     if (projectIndex === -1) {
       return undefined;
     }
@@ -225,11 +229,44 @@ class LocalDatabase {
   }
 
   finishProject(id: string): boolean {
-    const projectIndex = this.projects.findIndex((project) => project.id === id && !project.isDeleted);
+    const projectIndex = this.projects.findIndex((project) => project.id === id);
     if (projectIndex === -1) {
       return false;
     }
     this.projects[projectIndex].isFinished = true;
+    this.projects[projectIndex].isDeleted = false;
+    this.saveData();
+    return true;
+  }
+
+  restoreProject(id: string): boolean {
+    const projectIndex = this.projects.findIndex((project) => project.id === id);
+    if (projectIndex === -1) {
+      return false;
+    }
+    this.projects[projectIndex].isDeleted = false;
+    this.projects[projectIndex].isFinished = false;
+    this.saveData();
+    return true;
+  }
+
+  moveToDeleted(id: string): boolean {
+    const projectIndex = this.projects.findIndex((project) => project.id === id);
+    if (projectIndex === -1) {
+      return false;
+    }
+    this.projects[projectIndex].isDeleted = true;
+    this.projects[projectIndex].isFinished = false;
+    this.saveData();
+    return true;
+  }
+
+  permanentDeleteProject(id: string): boolean {
+    const projectIndex = this.projects.findIndex((project) => project.id === id);
+    if (projectIndex === -1) {
+      return false;
+    }
+    this.projects.splice(projectIndex, 1);
     this.saveData();
     return true;
   }

@@ -16,6 +16,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Analytics', href: '/analytics', icon: TrendingUp },
   ];
 
+  const getCurrentDate = () => {
+    return new Date().toLocaleDateString('pt-BR');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b">
@@ -61,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-muted-foreground">
-              © 2024 Sistema de Gerência de Projetos
+              © 2025 Sistema de Gerência de Projetos - {getCurrentDate()}
             </p>
             <a
               href="mailto:danilo.s.loureiro2@gmail.com"

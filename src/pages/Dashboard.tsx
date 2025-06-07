@@ -5,19 +5,26 @@ import StatusCard from '../components/StatusCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { db, Project, formatCurrency } from '../lib/database';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { db, Project, formatCurrency, convertCurrency } from '../lib/database';
 
 const Dashboard: React.FC = () => {
   const [activeProjects, setActiveProjects] = useState<Project[]>([]);
   const [finishedProjects, setFinishedProjects] = useState<Project[]>([]);
   const [deletedProjects, setDeletedProjects] = useState<Project[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
 
   useEffect(() => {
-    setActiveProjects(db.getActiveProjects());
-    setFinishedProjects(db.getFinishedProjects());
-    setDeletedProjects(db.getDeletedProjects());
+    const active = db.getActiveProjects();
+    const finished = db.getFinishedProjects();
+    const deleted = db.getDeletedProjects();
+    const all = db.getAllProjects();
+
+    setActiveProjects(active);
+    setFinishedProjects(finished);
+    setDeletedProjects(deleted);
+    setAllProjects(all);
   }, []);
 
   const getStats = (projects: Project[]) => {
@@ -31,8 +38,14 @@ const Dashboard: React.FC = () => {
   };
 
   const getFinancialData = (projects: Project[]) => {
-    const totalEstimated = projects.reduce((sum, p) => sum + p.estimatedValue, 0);
-    const totalFinal = projects.reduce((sum, p) => sum + p.finalValue, 0);
+    const totalEstimated = projects.reduce((sum, p) => {
+      const convertedValue = convertCurrency(p.estimatedValue, p.currency, selectedCurrency);
+      return sum + convertedValue;
+    }, 0);
+    const totalFinal = projects.reduce((sum, p) => {
+      const convertedValue = convertCurrency(p.finalValue, p.currency, selectedCurrency);
+      return sum + convertedValue;
+    }, 0);
     return { totalEstimated, totalFinal };
   };
 
@@ -49,7 +62,7 @@ const Dashboard: React.FC = () => {
   };
 
   const getPhaseData = (projects: Project[]) => {
-    const phases = ['Iniciação', 'Planejamento', 'Execução', 'Encerramento'];
+    const phases = ['Iniciação', 'Planejamento', 'Execução', 'Monitoramento', 'Encerramento'];
     return phases.map(phase => ({
       name: phase,
       count: projects.filter(p => p.phase === phase).length
@@ -62,8 +75,6 @@ const Dashboard: React.FC = () => {
 
   const activeFinancial = getFinancialData(activeProjects);
   const finishedFinancial = getFinancialData(finishedProjects);
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   return (
     <Layout>
@@ -91,7 +102,7 @@ const Dashboard: React.FC = () => {
 
           <TabsContent value="active" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <StatusCard title="Total" count={activeStats.total} color="blue" />
+              <StatusCard title="Total" count={allProjects.length} color="blue" />
               <StatusCard title="Em Progresso" count={activeStats.inProgress} color="yellow" />
               <StatusCard title="Pendentes" count={activeStats.pending} color="gray" />
               <StatusCard title="Atrasados" count={activeStats.delayed} color="red" />

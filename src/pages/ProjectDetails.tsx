@@ -13,7 +13,7 @@ import ProjectForm from '../components/ProjectForm';
 import TaskManager from '../components/TaskManager';
 import CommentManager from '../components/CommentManager';
 import FileManager from '../components/FileManager';
-import { db, Project, formatCurrency, Task, HistoryEntry } from '../lib/database';
+import { db, Project, formatCurrency, HistoryEntry } from '../lib/database';
 
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -119,24 +119,63 @@ const ProjectDetails: React.FC = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityStyle = (priority: string) => {
     switch (priority) {
-      case 'Alta': return 'destructive';
-      case 'Média': return 'secondary';
-      case 'Baixa': return 'outline';
-      default: return 'outline';
+      case 'Alta': 
+        return { 
+          variant: 'destructive' as const, 
+          icon: <Flag className="w-4 h-4 text-red-600" />
+        };
+      case 'Média': 
+        return { 
+          variant: 'secondary' as const, 
+          icon: <Flag className="w-4 h-4 text-yellow-600" />
+        };
+      case 'Baixa': 
+        return { 
+          variant: 'outline' as const, 
+          icon: <Flag className="w-4 h-4 text-green-600" />
+        };
+      default: 
+        return { 
+          variant: 'outline' as const, 
+          icon: <Flag className="w-4 h-4 text-gray-600" />
+        };
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'Em Progresso': return 'default';
-      case 'Pendente': return 'secondary';
-      case 'Concluído': return 'outline';
-      case 'Atrasado': return 'destructive';
-      default: return 'outline';
+      case 'Em Progresso': 
+        return { 
+          variant: 'default' as const, 
+          icon: <Clock className="w-4 h-4 text-blue-600" />
+        };
+      case 'Pendente': 
+        return { 
+          variant: 'secondary' as const, 
+          icon: <Clock className="w-4 h-4 text-gray-600" />
+        };
+      case 'Concluído': 
+        return { 
+          variant: 'outline' as const, 
+          icon: <Clock className="w-4 h-4 text-green-600" />
+        };
+      case 'Atrasado': 
+        return { 
+          variant: 'destructive' as const, 
+          icon: <Clock className="w-4 h-4 text-red-600" />
+        };
+      default: 
+        return { 
+          variant: 'outline' as const, 
+          icon: <Clock className="w-4 h-4 text-gray-600" />
+        };
     }
   };
+
+  const priorityStyle = getPriorityStyle(project.priority);
+  const statusStyle = getStatusStyle(project.status);
 
   return (
     <Layout>
@@ -181,10 +220,10 @@ const ProjectDetails: React.FC = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Flag className="w-4 h-4 text-muted-foreground" />
+                {priorityStyle.icon}
                 <div>
                   <p className="text-sm text-muted-foreground">Prioridade</p>
-                  <Badge variant={getPriorityColor(project.priority)}>{project.priority}</Badge>
+                  <Badge variant={priorityStyle.variant}>{project.priority}</Badge>
                 </div>
               </div>
             </CardContent>
@@ -193,10 +232,10 @@ const ProjectDetails: React.FC = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-muted-foreground" />
+                {statusStyle.icon}
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge variant={getStatusColor(project.status)}>{project.status}</Badge>
+                  <Badge variant={statusStyle.variant}>{project.status}</Badge>
                 </div>
               </div>
             </CardContent>
