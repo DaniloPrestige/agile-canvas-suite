@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Trash2, CheckCircle, Eye, Edit, ArrowUpDown } from 'lucide-react';
@@ -32,7 +31,7 @@ const ProjectList: React.FC = () => {
     const active = db.getActiveProjects();
     const deleted = db.getDeletedProjects();
     const finished = db.getFinishedProjects();
-    const all = db.getAllProjects();
+    const all = [...active, ...finished, ...deleted];
     
     setProjects(active);
     setDeletedProjects(deleted);
@@ -78,17 +77,15 @@ const ProjectList: React.FC = () => {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const getStatusStats = () => {
-    const total = allProjects.length;
-    const inProgress = projects.filter(p => p.status === 'Em Progresso').length;
-    const pending = projects.filter(p => p.status === 'Pendente').length;
-    const completed = finishedProjects.length;
-    const delayed = projects.filter(p => p.status === 'Atrasado').length;
+  const getStatusStats = (projectList: Project[]) => {
+    const total = projectList.length;
+    const inProgress = projectList.filter(p => p.status === 'Em Progresso').length;
+    const pending = projectList.filter(p => p.status === 'Pendente').length;
+    const completed = projectList.filter(p => p.status === 'Concluído').length;
+    const delayed = projectList.filter(p => p.status === 'Atrasado').length;
 
     return { total, inProgress, pending, completed, delayed };
   };
-
-  const stats = getStatusStats();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
@@ -316,11 +313,11 @@ const ProjectList: React.FC = () => {
                 Adicionar Projeto
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden">
+            <DialogContent className="max-w-4xl h-[85vh] overflow-hidden">
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Projeto</DialogTitle>
               </DialogHeader>
-              <div className="overflow-y-auto max-h-[calc(95vh-120px)] px-1">
+              <div className="overflow-y-auto flex-1 px-1">
                 <ProjectForm 
                   onSubmit={() => {
                     setIsFormOpen(false);
@@ -333,15 +330,6 @@ const ProjectList: React.FC = () => {
           </Dialog>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <StatusCard title="Total de Projetos" count={stats.total} color="blue" />
-          <StatusCard title="Em Progresso" count={stats.inProgress} color="yellow" />
-          <StatusCard title="Pendentes" count={stats.pending} color="gray" />
-          <StatusCard title="Concluídos" count={stats.completed} color="green" />
-          <StatusCard title="Atrasados" count={stats.delayed} color="red" />
-        </div>
-
         {/* Tabs for different project views */}
         <Tabs defaultValue="active" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -351,6 +339,15 @@ const ProjectList: React.FC = () => {
           </TabsList>
 
           <TabsContent value="active" className="space-y-4">
+            {/* Stats Cards for Active Projects */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <StatusCard title="Total de Projetos" count={projects.length} color="blue" />
+              <StatusCard title="Em Progresso" count={getStatusStats(projects).inProgress} color="yellow" />
+              <StatusCard title="Pendentes" count={getStatusStats(projects).pending} color="gray" />
+              <StatusCard title="Concluídos" count={getStatusStats(projects).completed} color="green" />
+              <StatusCard title="Atrasados" count={getStatusStats(projects).delayed} color="red" />
+            </div>
+
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
@@ -403,6 +400,15 @@ const ProjectList: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="finished" className="space-y-4">
+            {/* Stats Cards for Finished Projects */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <StatusCard title="Total Finalizados" count={finishedProjects.length} color="green" />
+              <StatusCard title="Em Progresso" count={getStatusStats(finishedProjects).inProgress} color="yellow" />
+              <StatusCard title="Pendentes" count={getStatusStats(finishedProjects).pending} color="gray" />
+              <StatusCard title="Concluídos" count={getStatusStats(finishedProjects).completed} color="green" />
+              <StatusCard title="Atrasados" count={getStatusStats(finishedProjects).delayed} color="red" />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {finishedProjects.map((project) => (
                 <ProjectCard key={project.id} project={project} type="finished" />
@@ -416,6 +422,15 @@ const ProjectList: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="deleted" className="space-y-4">
+            {/* Stats Cards for Deleted Projects */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <StatusCard title="Total Excluídos" count={deletedProjects.length} color="red" />
+              <StatusCard title="Em Progresso" count={getStatusStats(deletedProjects).inProgress} color="yellow" />
+              <StatusCard title="Pendentes" count={getStatusStats(deletedProjects).pending} color="gray" />
+              <StatusCard title="Concluídos" count={getStatusStats(deletedProjects).completed} color="green" />
+              <StatusCard title="Atrasados" count={getStatusStats(deletedProjects).delayed} color="red" />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {deletedProjects.map((project) => (
                 <ProjectCard key={project.id} project={project} type="deleted" />

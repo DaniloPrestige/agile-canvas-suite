@@ -19,7 +19,7 @@ const Dashboard: React.FC = () => {
     const active = db.getActiveProjects();
     const finished = db.getFinishedProjects();
     const deleted = db.getDeletedProjects();
-    const all = db.getAllProjects();
+    const all = [...active, ...finished, ...deleted];
 
     setActiveProjects(active);
     setFinishedProjects(finished);
@@ -58,7 +58,7 @@ const Dashboard: React.FC = () => {
       { name: 'Alta', value: alta, color: '#ef4444' },
       { name: 'Média', value: media, color: '#f59e0b' },
       { name: 'Baixa', value: baixa, color: '#10b981' }
-    ];
+    ].filter(item => item.value > 0);
   };
 
   const getPhaseData = (projects: Project[]) => {
@@ -75,6 +75,11 @@ const Dashboard: React.FC = () => {
 
   const activeFinancial = getFinancialData(activeProjects);
   const finishedFinancial = getFinancialData(finishedProjects);
+
+  const renderCustomLabel = ({ name, percent }: any) => {
+    if (percent < 0.05) return ''; // Hide labels for very small slices
+    return `${name} ${(percent * 100).toFixed(0)}%`;
+  };
 
   return (
     <Layout>
@@ -102,7 +107,7 @@ const Dashboard: React.FC = () => {
 
           <TabsContent value="active" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <StatusCard title="Total" count={allProjects.length} color="blue" />
+              <StatusCard title="Total" count={activeProjects.length} color="blue" />
               <StatusCard title="Em Progresso" count={activeStats.inProgress} color="yellow" />
               <StatusCard title="Pendentes" count={activeStats.pending} color="gray" />
               <StatusCard title="Atrasados" count={activeStats.delayed} color="red" />
@@ -122,7 +127,7 @@ const Dashboard: React.FC = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={renderCustomLabel}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -194,7 +199,7 @@ const Dashboard: React.FC = () => {
 
           <TabsContent value="finished" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <StatusCard title="Total Finalizados" count={finishedStats.total} color="green" />
+              <StatusCard title="Total Finalizados" count={finishedProjects.length} color="green" />
               <StatusCard title="Em Progresso" count={finishedStats.inProgress} color="yellow" />
               <StatusCard title="Pendentes" count={finishedStats.pending} color="gray" />
               <StatusCard title="Atrasados" count={finishedStats.delayed} color="red" />
@@ -214,7 +219,7 @@ const Dashboard: React.FC = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={renderCustomLabel}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -250,7 +255,7 @@ const Dashboard: React.FC = () => {
 
           <TabsContent value="deleted" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <StatusCard title="Total Excluídos" count={deletedStats.total} color="red" />
+              <StatusCard title="Total Excluídos" count={deletedProjects.length} color="red" />
               <StatusCard title="Em Progresso" count={deletedStats.inProgress} color="yellow" />
               <StatusCard title="Pendentes" count={deletedStats.pending} color="gray" />
               <StatusCard title="Atrasados" count={deletedStats.delayed} color="red" />
@@ -276,7 +281,7 @@ const Dashboard: React.FC = () => {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={renderCustomLabel}
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
