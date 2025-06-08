@@ -1,444 +1,479 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Flag, Clock, User, DollarSign, FileText, Calendar, TrendingUp } from 'lucide-react';
 import Layout from '../components/Layout';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import ProgressBar from '../components/ProgressBar';
-import ProjectForm from '../components/ProjectForm';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  ArrowLeft, 
+  Calendar, 
+  User, 
+  Flag, 
+  Clock, 
+  Target,
+  Download,
+  Edit,
+  Trash2,
+  CheckSquare,
+  Building
+} from 'lucide-react';
+import { db, Project, Task, Comment, ProjectFile, formatCurrency } from '../lib/database';
 import TaskManager from '../components/TaskManager';
 import CommentManager from '../components/CommentManager';
 import FileManager from '../components/FileManager';
-import { db, Project, formatCurrency, HistoryEntry } from '../lib/database';
+import jsPDF from 'jspdf';
 
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [files, setFiles] = useState<ProjectFile[]>([]);
 
   useEffect(() => {
-    console.log('ProjectDetails mounted, id:', id);
     if (id) {
-      loadProject();
-      loadHistory();
-    } else {
-      setError('ID do projeto não fornecido');
-      setLoading(false);
+      const projectData = db.getProject(id);
+      setProject(projectData);
+      
+      if (projectData) {
+        setTasks(db.getProjectTasks(id));
+        setComments(db.getProjectComments(id));
+        setFiles(db.getProjectFiles(id));
+      }
     }
   }, [id]);
 
-  const loadProject = () => {
-    try {
-      console.log('Loading project with id:', id);
-      if (id) {
-        const projectData = db.getProject(id);
-        console.log('Project data:', projectData);
-        if (projectData) {
-          setProject(projectData);
-          setError(null);
-        } else {
-          setError('Projeto não encontrado');
-        }
-      }
-    } catch (err) {
-      console.error('Error loading project:', err);
-      setError('Erro ao carregar projeto');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const generateProjectPDF = () => {
+    if (!project) return;
 
-  const loadHistory = () => {
-    try {
-      if (id) {
-        const historyData = db.getProjectHistory(id);
-        console.log('History data:', historyData);
-        setHistory(historyData);
-      }
-    } catch (err) {
-      console.error('Error loading history:', err);
-    }
-  };
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    let currentY = 20;
+    const lineHeight = 6;
+    const margin = 20;
 
-  const updateProjectProgress = () => {
-    if (!id) return;
+    // Header
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatório do Projeto', margin, currentY);
+    currentY += 15;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} - Criado por: Danilo Araujo`, margin, currentY);
+    currentY += 15;
+
+    // Project Title
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(project.name, margin, currentY);
+    currentY += 12;
+
+    // Project Details in two columns
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
     
-    try {
-      console.log('Updating project progress for:', id);
-      const tasks = db.getProjectTasks(id);
-      const completedTasks = tasks.filter(task => task.status === 'Concluída');
-      const progress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
+    const leftColumn = pageWidth / 2 - 10;
+    const rightColumn = pageWidth / 2 + 10;
+    
+    // Left column
+    let leftY = currentY;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cliente:', margin, leftY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(project.client, margin + 25, leftY);
+    leftY += lineHeight;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Responsável:', margin, leftY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(project.responsible, margin + 30, leftY);
+    leftY += lineHeight;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Status:', margin, leftY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(project.status, margin + 25, leftY);
+    leftY += lineHeight;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Prioridade:', margin, leftY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(project.priority, margin + 30, leftY);
+    leftY += lineHeight;
+
+    // Right column
+    let rightY = currentY;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fase:', rightColumn, rightY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(project.phase, rightColumn + 20, rightY);
+    rightY += lineHeight;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Progresso:', rightColumn, rightY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${project.progress}%`, rightColumn + 30, rightY);
+    rightY += lineHeight;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Início:', rightColumn, rightY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(project.startDate || 'N/A', rightColumn + 20, rightY);
+    rightY += lineHeight;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fim:', rightColumn, rightY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(project.endDate || 'N/A', rightColumn + 20, rightY);
+    rightY += lineHeight;
+
+    currentY = Math.max(leftY, rightY) + 8;
+
+    // Financial Information
+    if (project.estimatedValue > 0 || project.finalValue > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Informações Financeiras:', margin, currentY);
+      currentY += lineHeight;
       
-      db.updateProject(id, { progress });
-      db.addHistoryEntry(id, 'system', `Progresso atualizado para ${progress}%`);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Valor Estimado: ${formatCurrency(project.estimatedValue, project.currency)}`, margin + 5, currentY);
+      currentY += lineHeight;
+      doc.text(`Valor Final: ${formatCurrency(project.finalValue, project.currency)}`, margin + 5, currentY);
+      currentY += 8;
+    }
+
+    // Description
+    if (project.description) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Descrição:', margin, currentY);
+      currentY += lineHeight;
       
-      // Reload data
-      loadProject();
-      loadHistory();
-    } catch (err) {
-      console.error('Error updating progress:', err);
+      doc.setFont('helvetica', 'normal');
+      const descriptionLines = doc.splitTextToSize(project.description, pageWidth - 2 * margin);
+      doc.text(descriptionLines, margin + 5, currentY);
+      currentY += descriptionLines.length * lineHeight + 8;
+    }
+
+    // Tasks
+    if (tasks.length > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Tarefas:', margin, currentY);
+      currentY += lineHeight;
+      
+      doc.setFont('helvetica', 'normal');
+      tasks.slice(0, 8).forEach(task => {
+        const status = task.status === 'Concluída' ? '[✓]' : '[ ]';
+        const taskText = `${status} ${task.name}`;
+        const taskLines = doc.splitTextToSize(taskText, pageWidth - 2 * margin - 10);
+        
+        if (currentY + taskLines.length * lineHeight > pageHeight - 30) {
+          return; // Stop if we're running out of space
+        }
+        
+        doc.text(taskLines, margin + 5, currentY);
+        currentY += taskLines.length * lineHeight;
+      });
+      
+      if (tasks.length > 8) {
+        doc.text(`... e mais ${tasks.length - 8} tarefas`, margin + 5, currentY);
+        currentY += lineHeight;
+      }
+      currentY += 5;
+    }
+
+    // Comments
+    if (comments.length > 0 && currentY < pageHeight - 50) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Comentários:', margin, currentY);
+      currentY += lineHeight;
+      
+      doc.setFont('helvetica', 'normal');
+      comments.slice(0, 3).forEach(comment => {
+        if (currentY > pageHeight - 40) return;
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${comment.author}:`, margin + 5, currentY);
+        doc.setFont('helvetica', 'normal');
+        
+        const commentLines = doc.splitTextToSize(comment.text, pageWidth - 2 * margin - 10);
+        doc.text(commentLines.slice(0, 2), margin + 5, currentY + lineHeight);
+        currentY += Math.min(commentLines.length, 2) * lineHeight + 8;
+      });
+      
+      if (comments.length > 3) {
+        doc.text(`... e mais ${comments.length - 3} comentários`, margin + 5, currentY);
+        currentY += lineHeight;
+      }
+    }
+
+    // Files
+    if (files.length > 0 && currentY < pageHeight - 30) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Arquivos:', margin, currentY);
+      currentY += lineHeight;
+      
+      doc.setFont('helvetica', 'normal');
+      files.slice(0, 5).forEach(file => {
+        if (currentY > pageHeight - 25) return;
+        doc.text(`• ${file.name}`, margin + 5, currentY);
+        currentY += lineHeight;
+      });
+      
+      if (files.length > 5) {
+        doc.text(`... e mais ${files.length - 5} arquivos`, margin + 5, currentY);
+      }
+    }
+
+    doc.save(`projeto-${project.name.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
+  };
+
+  const handleFinishProject = () => {
+    if (project) {
+      db.updateProject(project.id, { status: 'Concluído' });
+      setProject({ ...project, status: 'Concluído' });
     }
   };
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando projeto...</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (error || !project) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <p className="text-muted-foreground mb-4">{error || 'Projeto não encontrado'}</p>
-            <Link to="/">
-              <Button variant="outline">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar para Lista
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
-  const getPriorityStyle = (priority: string) => {
-    switch (priority) {
-      case 'Alta': 
-        return { 
-          variant: 'destructive' as const, 
-          icon: <Flag className="w-4 h-4 text-red-600" />
-        };
-      case 'Média': 
-        return { 
-          variant: 'secondary' as const, 
-          icon: <Flag className="w-4 h-4 text-yellow-600" />
-        };
-      case 'Baixa': 
-        return { 
-          variant: 'outline' as const, 
-          icon: <Flag className="w-4 h-4 text-green-600" />
-        };
-      default: 
-        return { 
-          variant: 'outline' as const, 
-          icon: <Flag className="w-4 h-4 text-gray-600" />
-        };
+  const handleDeleteProject = () => {
+    if (project && window.confirm('Tem certeza que deseja excluir este projeto?')) {
+      db.deleteProject(project.id);
+      window.location.href = '/';
     }
   };
 
-  const getStatusStyle = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Em Progresso': 
-        return { 
-          variant: 'default' as const, 
-          icon: <Clock className="w-4 h-4 text-blue-600" />
-        };
-      case 'Pendente': 
-        return { 
-          variant: 'secondary' as const, 
-          icon: <Clock className="w-4 h-4 text-gray-600" />
-        };
-      case 'Concluído': 
-        return { 
-          variant: 'outline' as const, 
-          icon: <Clock className="w-4 h-4 text-green-600" />
-        };
-      case 'Atrasado': 
-        return { 
-          variant: 'destructive' as const, 
-          icon: <Clock className="w-4 h-4 text-red-600" />
-        };
-      default: 
-        return { 
-          variant: 'outline' as const, 
-          icon: <Clock className="w-4 h-4 text-gray-600" />
-        };
+      case 'Em Progresso':
+        return 'bg-blue-100 text-blue-800';
+      case 'Pendente':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Concluído':
+        return 'bg-green-100 text-green-800';
+      case 'Atrasado':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const priorityStyle = getPriorityStyle(project.priority);
-  const statusStyle = getStatusStyle(project.status);
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'Alta':
+        return 'text-red-600';
+      case 'Média':
+        return 'text-yellow-600';
+      case 'Baixa':
+        return 'text-green-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
+  if (!project) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Projeto não encontrado</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link to="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-          </Link>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-            <p className="text-muted-foreground">{project.client}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link to="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
+              <p className="text-muted-foreground mt-1">Detalhes completos do projeto</p>
+            </div>
           </div>
-          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <Button onClick={() => setIsEditDialogOpen(true)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Editar Projeto
+          
+          <div className="flex space-x-2">
+            <Button onClick={generateProjectPDF} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PDF
             </Button>
-            <DialogContent className="max-w-4xl h-[90vh] p-0">
-              <DialogHeader className="px-6 py-4 border-b">
-                <DialogTitle>Editar Projeto</DialogTitle>
-              </DialogHeader>
-              <div className="flex-1 overflow-hidden">
-                <ProjectForm 
-                  project={project}
-                  onSubmit={() => {
-                    setIsEditDialogOpen(false);
-                    loadProject();
-                    loadHistory();
-                  }}
-                  onCancel={() => setIsEditDialogOpen(false)}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
+            <Button variant="outline">
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+            {project.status !== 'Concluído' && (
+              <Button onClick={handleFinishProject} variant="outline">
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Finalizar
+              </Button>
+            )}
+            <Button onClick={handleDeleteProject} variant="destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir
+            </Button>
+          </div>
         </div>
 
         {/* Project Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                {priorityStyle.icon}
-                <div>
-                  <p className="text-sm text-muted-foreground">Prioridade</p>
-                  <Badge variant={priorityStyle.variant}>{project.priority}</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                {statusStyle.icon}
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge variant={statusStyle.variant}>{project.status}</Badge>
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Cliente</CardTitle>
+              <Building className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{project.client}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Responsável</p>
-                  <p className="font-medium">{project.responsible}</p>
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Responsável</CardTitle>
+              <User className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{project.responsible}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Valor Estimado</p>
-                  <p className="font-medium">{formatCurrency(project.estimatedValue, project.currency)}</p>
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Status</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <Badge className={getStatusColor(project.status)}>
+                {project.status}
+              </Badge>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Progresso</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{project.progress}%</div>
+              <Progress value={project.progress} className="mt-2" />
             </CardContent>
           </Card>
         </div>
 
-        {/* Progress */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  <h3 className="font-semibold">Progresso do Projeto</h3>
-                </div>
-                <span className="text-sm text-muted-foreground">{project.progress}%</span>
-              </div>
-              <ProgressBar progress={project.progress} showPercentage={false} />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Project Details */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  Informações do Projeto
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {project.description && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Descrição</h4>
+                    <p className="text-muted-foreground">{project.description}</p>
+                  </div>
+                )}
 
-        {/* Tabs */}
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="details" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Detalhes
-            </TabsTrigger>
-            <TabsTrigger value="tasks">Tarefas</TabsTrigger>
-            <TabsTrigger value="comments">Comentários</TabsTrigger>
-            <TabsTrigger value="files">Arquivos</TabsTrigger>
-            <TabsTrigger value="history">Histórico</TabsTrigger>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                      <Flag className="w-4 h-4" />
+                      Prioridade
+                    </h4>
+                    <span className={`font-medium ${getPriorityColor(project.priority)}`}>
+                      {project.priority}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Fase</h4>
+                    <span className="text-muted-foreground">{project.phase}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Data de Início
+                    </h4>
+                    <span className="text-muted-foreground">{project.startDate || 'Não definida'}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Data de Fim
+                    </h4>
+                    <span className="text-muted-foreground">{project.endDate || 'Não definida'}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumo Financeiro</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-1">Valor Estimado</h4>
+                  <p className="text-2xl font-bold">{formatCurrency(project.estimatedValue, project.currency)}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-1">Valor Final</h4>
+                  <p className="text-2xl font-bold">{formatCurrency(project.finalValue, project.currency)}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-1">Moeda</h4>
+                  <p className="text-muted-foreground">{project.currency}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Tabs for Tasks, Comments, Files */}
+        <Tabs defaultValue="tasks" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="tasks">Tarefas ({tasks.length})</TabsTrigger>
+            <TabsTrigger value="comments">Comentários ({comments.length})</TabsTrigger>
+            <TabsTrigger value="files">Arquivos ({files.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    Informações Gerais
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fase</p>
-                    <p className="font-medium">{project.phase}</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Período</p>
-                    </div>
-                    <p className="font-medium">
-                      {formatDate(project.startDate)} - {formatDate(project.endDate)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Criado em</p>
-                    <p className="font-medium">{formatDate(project.createdAt)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5" />
-                    Valores
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Valor Estimado</p>
-                    <p className="font-medium">{formatCurrency(project.estimatedValue, project.currency)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Valor Final</p>
-                    <p className="font-medium">{formatCurrency(project.finalValue, project.currency)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Moeda</p>
-                    <p className="font-medium">{project.currency}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Descrição</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{project.description || 'Nenhuma descrição fornecida'}</p>
-              </CardContent>
-            </Card>
-
-            {project.tags.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tags</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {project.tags.map((tag, index) => (
-                      <Badge key={index} variant="outline">{tag}</Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
           <TabsContent value="tasks" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gerenciamento de Tarefas</CardTitle>
-                <CardDescription>Gerencie as tarefas relacionadas a este projeto</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TaskManager projectId={project.id} onTaskUpdate={updateProjectProgress} />
-              </CardContent>
-            </Card>
+            <TaskManager
+              projectId={project.id}
+              onTasksChange={(newTasks) => setTasks(newTasks)}
+            />
           </TabsContent>
 
           <TabsContent value="comments" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Comentários do Projeto</CardTitle>
-                <CardDescription>Histórico de comentários e discussões</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CommentManager projectId={project.id} />
-              </CardContent>
-            </Card>
+            <CommentManager
+              projectId={project.id}
+              onCommentsChange={(newComments) => setComments(newComments)}
+            />
           </TabsContent>
 
           <TabsContent value="files" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Arquivos do Projeto</CardTitle>
-                <CardDescription>Documentos e arquivos relacionados ao projeto</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FileManager projectId={project.id} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="history" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Histórico do Projeto</CardTitle>
-                <CardDescription>Registro completo de todas as atividades</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {history.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Nenhum histórico encontrado</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {history.map((entry) => (
-                      <div key={entry.id} className="flex items-start space-x-3 p-3 border rounded-lg">
-                        <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                        <div className="flex-1">
-                          <p className="text-sm">{entry.action}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(entry.timestamp).toLocaleString('pt-BR')}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <FileManager
+              projectId={project.id}
+              onFilesChange={(newFiles) => setFiles(newFiles)}
+            />
           </TabsContent>
         </Tabs>
       </div>
