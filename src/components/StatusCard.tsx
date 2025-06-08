@@ -3,8 +3,8 @@ import React from 'react';
 
 interface StatusCardProps {
   title: string;
-  count: number;
-  color: 'blue' | 'yellow' | 'gray' | 'green' | 'red';
+  count: number | string;
+  color: 'blue' | 'yellow' | 'gray' | 'green' | 'red' | 'purple';
   subtitle?: string;
 }
 
@@ -15,6 +15,7 @@ const StatusCard: React.FC<StatusCardProps> = ({ title, count, color, subtitle }
     gray: 'border-l-gray-500',
     green: 'border-l-green-500',
     red: 'border-l-red-500',
+    purple: 'border-l-purple-500',
   };
 
   return (

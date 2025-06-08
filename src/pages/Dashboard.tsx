@@ -176,37 +176,31 @@ const Dashboard: React.FC = () => {
                 title="Total" 
                 count={activeProjects.length} 
                 color="blue"
-                icon={<Target className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Em Progresso" 
                 count={activeStats.inProgress} 
                 color="yellow"
-                icon={<Activity className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Pendentes" 
                 count={activeStats.pending} 
                 color="gray"
-                icon={<Clock className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Atrasados" 
                 count={activeStats.delayed} 
                 color="red"
-                icon={<AlertTriangle className="w-4 h-4" />}
               />
               <StatusCard 
                 title="No Prazo" 
                 count={`${Math.round(kpis.onTimeRate)}%`} 
                 color="green"
-                icon={<CheckCircle className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Utilização" 
                 count={`${Math.round(resourceUtilization.utilization)}%`} 
                 color="purple"
-                icon={<Zap className="w-4 h-4" />}
               />
             </div>
 

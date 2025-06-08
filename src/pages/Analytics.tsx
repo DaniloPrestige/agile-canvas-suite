@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import StatusCard from '../components/StatusCard';
@@ -195,25 +194,21 @@ const Analytics: React.FC = () => {
                 title="Projetos Ativos" 
                 count={getActiveProjects().length} 
                 color="blue"
-                icon={<Target className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Progresso Médio" 
                 count={`${progressStats.averageProgress}%`} 
                 color="green"
-                icon={<TrendingUp className="w-4 h-4" />}
               />
               <StatusCard 
                 title="No Prazo" 
                 count={progressStats.onTimeProjects} 
                 color="yellow"
-                icon={<Clock className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Atrasados" 
                 count={progressStats.delayedProjects} 
                 color="red"
-                icon={<AlertTriangle className="w-4 h-4" />}
               />
             </div>
 
@@ -324,19 +319,16 @@ const Analytics: React.FC = () => {
                 title="Concluídos no Mês" 
                 count={productivityMetrics.completedThisMonth} 
                 color="green"
-                icon={<CheckCircle className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Tempo Médio (dias)" 
                 count={productivityMetrics.avgCompletionTime} 
                 color="blue"
-                icon={<Clock className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Taxa de Conclusão" 
                 count={`${Math.round(productivityMetrics.completionRate)}%`} 
                 color="yellow"
-                icon={<Target className="w-4 h-4" />}
               />
             </div>
 
@@ -392,27 +384,23 @@ const Analytics: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <StatusCard 
                 title="Receita Total" 
-                count={formatCurrency(financialStats.totalFinal, currencyFilter)} 
+                count={formatCurrency(financialStats.totalFinal, currencyFilter as "BRL" | "USD" | "EUR")} 
                 color="green"
-                icon={<DollarSign className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Orçamento Total" 
-                count={formatCurrency(financialStats.totalEstimated, currencyFilter)} 
+                count={formatCurrency(financialStats.totalEstimated, currencyFilter as "BRL" | "USD" | "EUR")} 
                 color="blue"
-                icon={<Target className="w-4 h-4" />}
               />
               <StatusCard 
                 title="Variação" 
-                count={formatCurrency(financialStats.variance, currencyFilter)} 
+                count={formatCurrency(financialStats.variance, currencyFilter as "BRL" | "USD" | "EUR")} 
                 color={financialStats.variance >= 0 ? "green" : "red"}
-                icon={financialStats.variance >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
               />
               <StatusCard 
                 title="% Variação" 
                 count={`${financialStats.variancePercentage >= 0 ? '+' : ''}${Math.round(financialStats.variancePercentage)}%`} 
                 color={financialStats.variancePercentage >= 0 ? "green" : "red"}
-                icon={<BarChart3 className="w-4 h-4" />}
               />
             </div>
 
@@ -457,7 +445,7 @@ const Analytics: React.FC = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Ticket Médio</span>
-                        <span className="font-medium">{formatCurrency(35000, currencyFilter)}</span>
+                        <span className="font-medium">{formatCurrency(35000, currencyFilter as "BRL" | "USD" | "EUR")}</span>
                       </div>
                     </div>
                   </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -456,24 +455,15 @@ const ProjectDetails: React.FC = () => {
           </TabsList>
 
           <TabsContent value="tasks" className="space-y-4">
-            <TaskManager
-              projectId={project.id}
-              onTasksChange={(newTasks) => setTasks(newTasks)}
-            />
+            <TaskManager projectId={project.id} />
           </TabsContent>
 
           <TabsContent value="comments" className="space-y-4">
-            <CommentManager
-              projectId={project.id}
-              onCommentsChange={(newComments) => setComments(newComments)}
-            />
+            <CommentManager projectId={project.id} />
           </TabsContent>
 
           <TabsContent value="files" className="space-y-4">
-            <FileManager
-              projectId={project.id}
-              onFilesChange={(newFiles) => setFiles(newFiles)}
-            />
+            <FileManager projectId={project.id} />
           </TabsContent>
         </Tabs>
       </div>
