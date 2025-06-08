@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,8 +89,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(90vh-120px)]">
-      <div className="flex-1 overflow-y-auto p-6">
+    <div className="flex flex-col max-h-[calc(90vh-120px)]">
+      <div className="flex-1 overflow-y-auto p-6 max-h-[calc(90vh-200px)]">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -229,7 +228,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
               </Popover>
             </div>
           </div>
-
+          
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label htmlFor="estimatedValue" className="text-sm">Valor Estimado</Label>
@@ -255,7 +254,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
             </div>
             <div>
               <Label htmlFor="currency" className="text-sm">Moeda</Label>
-              <Select value={formData.currency} onValueChange={(value: 'BRL' | 'USD' | 'EUR') => setFormData({ ...formData, currency: value })}>
+              <Select 
+                value={formData.currency} 
+                onValueChange={(value: 'BRL' | 'USD' | 'EUR') => setFormData({ ...formData, currency: value })}
+              >
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -291,7 +293,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
         </form>
       </div>
       
-      <div className="border-t p-6">
+      <div className="border-t p-6 bg-white">
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onCancel} className="h-8 text-sm">
             Cancelar

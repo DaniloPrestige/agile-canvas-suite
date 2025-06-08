@@ -1,54 +1,41 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, Plus, Edit, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { db, Task } from '../lib/database';
 
 interface TaskManagerProps {
   projectId: string;
-  onTaskUpdate: () => void;
 }
 
-const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) => {
-  const [tasks, setTasks] = useState<Task[]>(db.getProjectTasks(projectId));
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+const TaskManager: React.FC<TaskManagerProps> = ({ projectId }) => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    status: 'Pendente' as 'Pendente' | 'Em Progresso' | 'Concluída',
-    dueDate: '',
-    priority: 'Média' as 'Alta' | 'Média' | 'Baixa',
+    status: 'Pendente' as const,
+    priority: 'Média' as const,
+    assignedTo: '',
   });
+  const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+
+  useEffect(() => {
+    loadTasks();
+  }, [projectId]);
 
   const loadTasks = () => {
-    const updatedTasks = db.getProjectTasks(projectId);
-    setTasks(updatedTasks);
-    onTaskUpdate();
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (editingTask) {
-      db.updateTask(editingTask.id, formData);
-    } else {
-      db.createTask({
-        ...formData,
-        projectId,
-      });
-    }
-    
-    resetForm();
-    loadTasks();
+    const projectTasks = db.getProjectTasks(projectId);
+    setTasks(projectTasks);
   };
 
   const resetForm = () => {
@@ -56,180 +43,206 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
       name: '',
       description: '',
       status: 'Pendente',
-      dueDate: '',
       priority: 'Média',
+      assignedTo: '',
     });
+    setDueDate(undefined);
     setEditingTask(null);
-    setIsDialogOpen(false);
+    setShowForm(false);
   };
 
-  const handleEdit = (task: Task) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const taskData = {
+      projectId,
+      name: formData.name,
+      description: formData.description,
+      status: formData.status,
+      dueDate: dueDate ? dueDate.toISOString().split('T')[0] : '',
+      priority: formData.priority,
+      assignedTo: formData.assignedTo,
+    };
+
+    if (editingTask) {
+      db.updateTask(editingTask.id, taskData);
+    } else {
+      db.createTask(taskData);
+    }
+    
+    loadTasks();
+    resetForm();
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
     setFormData({
       name: task.name,
       description: task.description,
       status: task.status,
-      dueDate: task.dueDate,
       priority: task.priority,
+      assignedTo: task.assignedTo,
     });
-    setEditingTask(task);
-    setIsDialogOpen(true);
+    setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+    setShowForm(true);
   };
 
-  const handleDelete = (taskId: string) => {
-    db.deleteTask(taskId);
+  const handleDeleteTask = (id: string) => {
+    db.deleteTask(id);
     loadTasks();
   };
 
-  const handleStatusChange = (taskId: string, completed: boolean) => {
-    const status = completed ? 'Concluída' : 'Pendente';
-    db.updateTask(taskId, { status });
-    loadTasks();
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Concluída': return 'default';
-      case 'Em Progresso': return 'secondary';
-      default: return 'outline';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Alta': return 'destructive';
-      case 'Média': return 'secondary';
-      default: return 'outline';
-    }
+  const handleDueDateSelect = (date: Date | undefined) => {
+    setDueDate(date);
+    setDueDateOpen(false);
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Lista de Tarefas</h3>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingTask(null)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Tarefa
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingTask ? 'Editar' : 'Nova'} Tarefa</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="taskName">Nome da Tarefa</Label>
-                <Input
-                  id="taskName"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="taskDescription">Descrição</Label>
-                <Textarea
-                  id="taskDescription"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="taskStatus">Status</Label>
-                  <Select value={formData.status} onValueChange={(value: 'Pendente' | 'Em Progresso' | 'Concluída') => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pendente">Pendente</SelectItem>
-                      <SelectItem value="Em Progresso">Em Progresso</SelectItem>
-                      <SelectItem value="Concluída">Concluída</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="taskPriority">Prioridade</Label>
-                  <Select value={formData.priority} onValueChange={(value: 'Alta' | 'Média' | 'Baixa') => setFormData({ ...formData, priority: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Alta">Alta</SelectItem>
-                      <SelectItem value="Média">Média</SelectItem>
-                      <SelectItem value="Baixa">Baixa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="taskDueDate">Data de Vencimento</Label>
-                <Input
-                  id="taskDueDate"
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingTask ? 'Atualizar' : 'Criar'} Tarefa
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <h2 className="text-xl font-semibold">Gerenciar Tarefas</h2>
+        <Button onClick={() => setShowForm(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Tarefa
+        </Button>
       </div>
 
+      {showForm && (
+        <div className="rounded-md border bg-card text-card-foreground shadow-sm p-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name" className="text-sm">Nome da Tarefa *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+                className="h-8 text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description" className="text-sm">Descrição</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Descreva a tarefa..."
+                rows={3}
+                className="resize-none text-sm"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="status" className="text-sm">Status</Label>
+                <Select value={formData.status} onValueChange={(value: 'Pendente' | 'Em Progresso' | 'Concluída') => setFormData({ ...formData, status: value })}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pendente">Pendente</SelectItem>
+                    <SelectItem value="Em Progresso">Em Progresso</SelectItem>
+                    <SelectItem value="Concluída">Concluída</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="priority" className="text-sm">Prioridade</Label>
+                <Select value={formData.priority} onValueChange={(value: 'Alta' | 'Média' | 'Baixa') => setFormData({ ...formData, priority: value })}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Alta">Alta</SelectItem>
+                    <SelectItem value="Média">Média</SelectItem>
+                    <SelectItem value="Baixa">Baixa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="assignedTo" className="text-sm">Atribuída a</Label>
+              <Input
+                id="assignedTo"
+                value={formData.assignedTo}
+                onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+                className="h-8 text-sm"
+              />
+            </div>
+
+            <div>
+              <Label className="text-sm">Data de Vencimento</Label>
+              <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal h-8 text-sm",
+                      !dueDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dueDate ? format(dueDate, "dd/MM/yyyy") : "Selecione a data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 z-50" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dueDate}
+                    onSelect={handleDueDateSelect}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={resetForm} className="h-8 text-sm">
+                Cancelar
+              </Button>
+              <Button type="submit" className="h-8 text-sm">
+                {editingTask ? 'Atualizar' : 'Criar'} Tarefa
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {tasks.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Nenhuma tarefa encontrada</p>
+        <div className="text-center py-4">
+          <p className="text-gray-500 text-sm">Nenhuma tarefa encontrada para este projeto.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {tasks.map((task) => (
-            <Card key={task.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <Checkbox
-                      checked={task.status === 'Concluída'}
-                      onCheckedChange={(checked) => handleStatusChange(task.id, checked as boolean)}
-                    />
-                    <div className="flex-1">
-                      <h4 className={`font-medium ${task.status === 'Concluída' ? 'line-through text-muted-foreground' : ''}`}>
-                        {task.name}
-                      </h4>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
-                      )}
-                      <div className="flex items-center space-x-2 mt-2">
-                        <Badge variant={getStatusColor(task.status)}>{task.status}</Badge>
-                        <Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                        {task.dueDate && (
-                          <span className="text-xs text-muted-foreground">
-                            Vence: {new Date(task.dueDate).toLocaleDateString('pt-BR')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex space-x-1">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(task)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(task.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+            <div key={task.id} className="rounded-md border bg-card text-card-foreground shadow-sm p-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-semibold">{task.name}</h3>
+                  <p className="text-sm text-muted-foreground">{task.description}</p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex space-x-2">
+                  <Button variant="ghost" size="sm" onClick={() => handleEditTask(task)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-2 space-y-1">
+                <p className="text-sm"><span className="font-medium">Status:</span> {task.status}</p>
+                <p className="text-sm"><span className="font-medium">Prioridade:</span> {task.priority}</p>
+                <p className="text-sm"><span className="font-medium">Atribuída a:</span> {task.assignedTo}</p>
+                {task.dueDate && (
+                  <p className="text-sm"><span className="font-medium">Data de Vencimento:</span> {format(new Date(task.dueDate), "dd/MM/yyyy")}</p>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       )}

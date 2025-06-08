@@ -6,18 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { db, Project } from '../lib/database';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import ProjectForm from '../components/ProjectForm';
 import StatusCard from '../components/StatusCard';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, Edit, Trash2, Download, MoreVertical, CheckSquare, Archive } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import jsPDF from 'jspdf';
 
 const ProjectList: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'deleted'>('active');
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
   useEffect(() => {
     loadProjects();
@@ -49,13 +55,13 @@ const ProjectList: React.FC = () => {
       );
     }
 
-    // Filter by status
-    if (statusFilter !== 'all') {
+    // Filter by status (only for active tab)
+    if (statusFilter !== 'all' && activeTab === 'active') {
       filtered = filtered.filter(project => project.status === statusFilter);
     }
 
-    // Filter by priority
-    if (priorityFilter !== 'all') {
+    // Filter by priority (only for active tab)
+    if (priorityFilter !== 'all' && activeTab === 'active') {
       filtered = filtered.filter(project => project.priority === priorityFilter);
     }
 
@@ -74,15 +80,34 @@ const ProjectList: React.FC = () => {
     };
   };
 
-  const getStatusCounts = () => {
-    const activeProjects = projects.filter(p => !p.isDeleted);
-    const totalProjects = activeProjects.length;
-    const inProgress = activeProjects.filter(p => p.status === 'Em Progresso').length;
-    const pending = activeProjects.filter(p => p.status === 'Pendente').length;
-    const completed = activeProjects.filter(p => p.status === 'Concluído').length;
-    const delayed = activeProjects.filter(p => p.status === 'Atrasado').length;
+  const getStatusCards = () => {
+    const currentTabProjects = getFilteredProjects();
+    
+    if (activeTab === 'active') {
+      const totalProjects = currentTabProjects.length;
+      const inProgress = currentTabProjects.filter(p => p.status === 'Em Progresso').length;
+      const pending = currentTabProjects.filter(p => p.status === 'Pendente').length;
+      const delayed = currentTabProjects.filter(p => p.status === 'Atrasado').length;
 
-    return { totalProjects, inProgress, pending, completed, delayed };
+      return [
+        { title: 'Total de Projetos', count: totalProjects, color: 'blue' as const },
+        { title: 'Em Progresso', count: inProgress, color: 'yellow' as const },
+        { title: 'Pendentes', count: pending, color: 'gray' as const },
+        { title: 'Atrasados', count: delayed, color: 'red' as const }
+      ];
+    } else if (activeTab === 'finished') {
+      const totalFinished = currentTabProjects.length;
+      return [
+        { title: 'Concluídos', count: totalFinished, color: 'green' as const }
+      ];
+    } else if (activeTab === 'deleted') {
+      const totalDeleted = currentTabProjects.length;
+      return [
+        { title: 'Excluídos', count: totalDeleted, color: 'red' as const }
+      ];
+    }
+
+    return [];
   };
 
   const getStatusColor = (status: string) => {
@@ -113,9 +138,155 @@ const ProjectList: React.FC = () => {
     }
   };
 
-  const statusCounts = getStatusCounts();
+  const handleFinishProject = (project: Project) => {
+    db.updateProject(project.id, { status: 'Concluído' });
+    loadProjects();
+  };
+
+  const handleDeleteProject = (project: Project) => {
+    db.deleteProject(project.id);
+    loadProjects();
+  };
+
+  const handleStatusChange = (project: Project, newStatus: string) => {
+    if (newStatus === 'active') {
+      db.restoreProject(project.id);
+      db.updateProject(project.id, { status: 'Em Progresso' });
+    } else if (newStatus === 'finished') {
+      db.updateProject(project.id, { status: 'Concluído' });
+    } else if (newStatus === 'deleted') {
+      db.deleteProject(project.id);
+    }
+    loadProjects();
+  };
+
+  const handleSelectProject = (projectId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedProjects([...selectedProjects, projectId]);
+    } else {
+      setSelectedProjects(selectedProjects.filter(id => id !== projectId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allProjectIds = getFilteredProjects().map(p => p.id);
+      setSelectedProjects(allProjectIds);
+    } else {
+      setSelectedProjects([]);
+    }
+  };
+
+  const exportSelectedProjects = () => {
+    if (selectedProjects.length === 0) {
+      alert('Selecione pelo menos um projeto para exportar');
+      return;
+    }
+
+    const selectedProjectsData = projects.filter(p => selectedProjects.includes(p.id));
+    generatePDF(selectedProjectsData);
+  };
+
+  const generatePDF = (projectsToExport: Project[]) => {
+    const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height;
+    let currentY = 20;
+
+    // Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Gerência de Projetos - Prestige Cosméticos', 20, currentY);
+    currentY += 15;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Relatório gerado em: ${new Date().toLocaleDateString('pt-BR')} - Criado por Danilo Araujo`, 20, currentY);
+    currentY += 20;
+
+    projectsToExport.forEach((project, index) => {
+      if (currentY > pageHeight - 50) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      // Project title
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${index + 1}. ${project.name}`, 20, currentY);
+      currentY += 10;
+
+      // Project details in compact format
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      
+      const details = [
+        `Cliente: ${project.client}`,
+        `Responsável: ${project.responsible}`,
+        `Status: ${project.status}`,
+        `Prioridade: ${project.priority}`,
+        `Fase: ${project.phase}`,
+        `Progresso: ${project.progress}%`,
+        `Início: ${project.startDate || 'N/A'}`,
+        `Fim: ${project.endDate || 'N/A'}`
+      ];
+
+      details.forEach(detail => {
+        doc.text(detail, 25, currentY);
+        currentY += 5;
+      });
+
+      if (project.description) {
+        currentY += 2;
+        doc.text(`Descrição: ${project.description.substring(0, 100)}${project.description.length > 100 ? '...' : ''}`, 25, currentY);
+        currentY += 5;
+      }
+
+      // Tasks
+      const tasks = db.getProjectTasks(project.id);
+      if (tasks.length > 0) {
+        currentY += 3;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Tarefas:', 25, currentY);
+        currentY += 5;
+        doc.setFont('helvetica', 'normal');
+        
+        tasks.slice(0, 3).forEach(task => {
+          const status = task.status === 'Concluída' ? '[✓]' : '[ ]';
+          doc.text(`${status} ${task.name}`, 30, currentY);
+          currentY += 4;
+        });
+        
+        if (tasks.length > 3) {
+          doc.text(`... e mais ${tasks.length - 3} tarefas`, 30, currentY);
+          currentY += 4;
+        }
+      }
+
+      // Comments count
+      const comments = db.getProjectComments(project.id);
+      if (comments.length > 0) {
+        currentY += 2;
+        doc.text(`Comentários: ${comments.length}`, 25, currentY);
+        currentY += 5;
+      }
+
+      // Files count
+      const files = db.getProjectFiles(project.id);
+      if (files.length > 0) {
+        currentY += 2;
+        doc.text(`Arquivos: ${files.length}`, 25, currentY);
+        currentY += 5;
+      }
+
+      currentY += 10; // Space between projects
+    });
+
+    doc.save('projetos-selecionados.pdf');
+  };
+
   const tabCounts = getTabCounts();
   const filteredProjects = getFilteredProjects();
+  const statusCards = getStatusCards();
 
   return (
     <Layout>
@@ -123,32 +294,43 @@ const ProjectList: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Projetos</h1>
+            <h1 className="text-3xl font-bold text-foreground">Gerência de Projetos - Prestige Cosméticos</h1>
             <p className="text-muted-foreground">Gerencie todos os seus projetos em um só lugar</p>
           </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              + Adicionar Projeto
-            </Button>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-              <DialogHeader className="px-6 py-4 border-b">
-                <DialogTitle>Adicionar Novo Projeto</DialogTitle>
-              </DialogHeader>
-              <div className="overflow-hidden">
-                <ProjectForm 
-                  onSubmit={() => {
-                    setIsCreateDialogOpen(false);
-                    loadProjects();
-                  }}
-                  onCancel={() => setIsCreateDialogOpen(false)}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            {selectedProjects.length > 0 && (
+              <Button onClick={exportSelectedProjects} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Projetos ({selectedProjects.length})
+              </Button>
+            )}
+            <Link to="/analytics">
+              <Button variant="outline">Analytics</Button>
+            </Link>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                + Adicionar Projeto
+              </Button>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+                <DialogHeader className="px-6 py-4 border-b">
+                  <DialogTitle>Adicionar Novo Projeto</DialogTitle>
+                </DialogHeader>
+                <div className="overflow-hidden">
+                  <ProjectForm 
+                    onSubmit={() => {
+                      setIsCreateDialogOpen(false);
+                      loadProjects();
+                    }}
+                    onCancel={() => setIsCreateDialogOpen(false)}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+        <div className="grid grid-cols-3 bg-gray-100 p-1 rounded-lg">
           <button
             onClick={() => setActiveTab('active')}
             className={`px-6 py-3 rounded-md font-medium text-sm transition-colors ${
@@ -157,7 +339,7 @@ const ProjectList: React.FC = () => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Projetos Ativos
+            Projetos Ativos ({tabCounts.active})
           </button>
           <button
             onClick={() => setActiveTab('finished')}
@@ -167,7 +349,7 @@ const ProjectList: React.FC = () => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Finalizados
+            Finalizados ({tabCounts.finished})
           </button>
           <button
             onClick={() => setActiveTab('deleted')}
@@ -177,42 +359,62 @@ const ProjectList: React.FC = () => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Excluídos
+            Excluídos ({tabCounts.deleted})
           </button>
         </div>
 
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <StatusCard 
-            title="Total de Projetos" 
-            count={statusCounts.totalProjects} 
-            color="blue"
-          />
-          <StatusCard 
-            title="Em Progresso" 
-            count={statusCounts.inProgress} 
-            color="yellow"
-          />
-          <StatusCard 
-            title="Pendentes" 
-            count={statusCounts.pending} 
-            color="gray"
-          />
-          <StatusCard 
-            title="Concluídos" 
-            count={statusCounts.completed} 
-            color="green"
-          />
-          <StatusCard 
-            title="Atrasados" 
-            count={statusCounts.delayed} 
-            color="red"
-          />
+          {statusCards.map((card, index) => (
+            <StatusCard 
+              key={index}
+              title={card.title} 
+              count={card.count} 
+              color={card.color}
+            />
+          ))}
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-4 items-center">
-          <div className="relative flex-1">
+        {/* Filters - only show for active tab */}
+        {activeTab === 'active' && (
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Nome, responsável ou descrição..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="min-w-[150px]">
+                <SelectValue placeholder="Todos os status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os status</SelectItem>
+                <SelectItem value="Pendente">Pendente</SelectItem>
+                <SelectItem value="Em Progresso">Em Progresso</SelectItem>
+                <SelectItem value="Atrasado">Atrasado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="min-w-[180px]">
+                <SelectValue placeholder="Todas as prioridades" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as prioridades</SelectItem>
+                <SelectItem value="Alta">Alta</SelectItem>
+                <SelectItem value="Média">Média</SelectItem>
+                <SelectItem value="Baixa">Baixa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Search for other tabs */}
+        {activeTab !== 'active' && (
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Nome, responsável ou descrição..."
@@ -221,28 +423,28 @@ const ProjectList: React.FC = () => {
               className="pl-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm min-w-[150px]"
-          >
-            <option value="all">Todos os status</option>
-            <option value="Pendente">Pendente</option>
-            <option value="Em Progresso">Em Progresso</option>
-            <option value="Atrasado">Atrasado</option>
-            <option value="Concluído">Concluído</option>
-          </select>
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm min-w-[180px]"
-          >
-            <option value="all">Todas as prioridades</option>
-            <option value="Alta">Alta</option>
-            <option value="Média">Média</option>
-            <option value="Baixa">Baixa</option>
-          </select>
-        </div>
+        )}
+
+        {/* Selection controls */}
+        {filteredProjects.length > 0 && (
+          <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="select-all"
+                checked={selectedProjects.length === filteredProjects.length}
+                onCheckedChange={handleSelectAll}
+              />
+              <label htmlFor="select-all" className="text-sm font-medium">
+                Selecionar todos ({filteredProjects.length})
+              </label>
+            </div>
+            {selectedProjects.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {selectedProjects.length} projeto(s) selecionado(s)
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Projects Grid */}
         {filteredProjects.length === 0 ? (
@@ -260,9 +462,15 @@ const ProjectList: React.FC = () => {
               <div key={project.id} className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900 mb-1">{project.name}</h3>
-                      <p className="text-gray-600 text-sm">{project.client}</p>
+                    <div className="flex items-start gap-3 flex-1">
+                      <Checkbox
+                        checked={selectedProjects.includes(project.id)}
+                        onCheckedChange={(checked) => handleSelectProject(project.id, checked as boolean)}
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg text-gray-900 mb-1">{project.name}</h3>
+                        <p className="text-gray-600 text-sm">{project.client}</p>
+                      </div>
                     </div>
                     <div className="flex space-x-1">
                       <Link to={`/project/${project.id}`}>
@@ -270,6 +478,70 @@ const ProjectList: React.FC = () => {
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
+                      <Dialog>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setEditingProject(project)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+                          <DialogHeader className="px-6 py-4 border-b">
+                            <DialogTitle>Editar Projeto</DialogTitle>
+                          </DialogHeader>
+                          <div className="overflow-hidden">
+                            {editingProject && (
+                              <ProjectForm 
+                                project={editingProject}
+                                onSubmit={() => {
+                                  setEditingProject(null);
+                                  loadProjects();
+                                }}
+                                onCancel={() => setEditingProject(null)}
+                              />
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      {activeTab === 'active' && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleFinishProject(project)}
+                          >
+                            <CheckSquare className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteProject(project)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {(activeTab === 'finished' || activeTab === 'deleted') && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleStatusChange(project, 'active')}>
+                              Mover para Ativos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(project, 'finished')}>
+                              Mover para Finalizados
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(project, 'deleted')}>
+                              Mover para Excluídos
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </div>
 
