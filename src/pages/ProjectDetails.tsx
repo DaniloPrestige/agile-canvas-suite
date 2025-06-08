@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -23,6 +24,7 @@ import { db, Project, Task, Comment, ProjectFile, formatCurrency } from '../lib/
 import TaskManager from '../components/TaskManager';
 import CommentManager from '../components/CommentManager';
 import FileManager from '../components/FileManager';
+import ProjectForm from '../components/ProjectForm';
 import jsPDF from 'jspdf';
 
 const ProjectDetails: React.FC = () => {
@@ -31,8 +33,13 @@ const ProjectDetails: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
+    loadProjectData();
+  }, [id]);
+
+  const loadProjectData = () => {
     if (id) {
       const projectData = db.getProject(id);
       setProject(projectData);
@@ -43,7 +50,16 @@ const ProjectDetails: React.FC = () => {
         setFiles(db.getProjectFiles(id));
       }
     }
-  }, [id]);
+  };
+
+  const handleEditProject = () => {
+    setIsEditDialogOpen(true);
+  };
+
+  const handleProjectUpdate = () => {
+    loadProjectData();
+    setIsEditDialogOpen(false);
+  };
 
   const generateProjectPDF = () => {
     if (!project) return;
@@ -52,7 +68,7 @@ const ProjectDetails: React.FC = () => {
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
     let currentY = 20;
-    const lineHeight = 6;
+    const lineHeight = 5;
     const margin = 20;
 
     // Header
@@ -63,7 +79,7 @@ const ProjectDetails: React.FC = () => {
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} - Criado por: Danilo Araujo`, margin, currentY);
+    doc.text('Criado por: Danilo Araujo', margin, currentY);
     currentY += 15;
 
     // Project Title
@@ -146,6 +162,30 @@ const ProjectDetails: React.FC = () => {
       currentY += 8;
     }
 
+    // Project Performance Metrics
+    const allProjects = db.getAllProjects().filter(p => !p.isDeleted);
+    const activeProjects = allProjects.filter(p => p.status !== 'Concluído');
+    const onTimeProjects = activeProjects.filter(p => p.status !== 'Atrasado').length;
+    const totalActiveProjects = activeProjects.length;
+    const onTimeRate = totalActiveProjects > 0 ? Math.round((onTimeProjects / totalActiveProjects) * 100) : 0;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Indicadores de Performance:', margin, currentY);
+    currentY += lineHeight;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Taxa de Atendimento do Prazo: ${onTimeRate}%`, margin + 5, currentY);
+    currentY += lineHeight;
+    
+    const daysInProgress = project.startDate ? 
+      Math.floor((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    doc.text(`Dias em Execução: ${daysInProgress} dias`, margin + 5, currentY);
+    currentY += lineHeight;
+    
+    const progressPerDay = daysInProgress > 0 ? (project.progress / daysInProgress).toFixed(2) : '0';
+    doc.text(`Progresso Médio/Dia: ${progressPerDay}%`, margin + 5, currentY);
+    currentY += 8;
+
     // Description
     if (project.description) {
       doc.setFont('helvetica', 'bold');
@@ -154,8 +194,8 @@ const ProjectDetails: React.FC = () => {
       
       doc.setFont('helvetica', 'normal');
       const descriptionLines = doc.splitTextToSize(project.description, pageWidth - 2 * margin);
-      doc.text(descriptionLines, margin + 5, currentY);
-      currentY += descriptionLines.length * lineHeight + 8;
+      doc.text(descriptionLines.slice(0, 3), margin + 5, currentY);
+      currentY += Math.min(descriptionLines.length, 3) * lineHeight + 8;
     }
 
     // Tasks
@@ -165,66 +205,72 @@ const ProjectDetails: React.FC = () => {
       currentY += lineHeight;
       
       doc.setFont('helvetica', 'normal');
-      tasks.slice(0, 8).forEach(task => {
-        const status = task.status === 'Concluída' ? '[✓]' : '[ ]';
+      const completedTasks = tasks.filter(t => t.status === 'Concluída').length;
+      doc.text(`Total: ${tasks.length} | Concluídas: ${completedTasks} | Pendentes: ${tasks.length - completedTasks}`, margin + 5, currentY);
+      currentY += lineHeight + 2;
+      
+      tasks.slice(0, 6).forEach(task => {
+        const status = task.status === 'Concluída' ? '[X]' : '[ ]';
         const taskText = `${status} ${task.name}`;
         const taskLines = doc.splitTextToSize(taskText, pageWidth - 2 * margin - 10);
         
-        if (currentY + taskLines.length * lineHeight > pageHeight - 30) {
-          return; // Stop if we're running out of space
+        if (currentY + taskLines.length * lineHeight > pageHeight - 40) {
+          return;
         }
         
         doc.text(taskLines, margin + 5, currentY);
         currentY += taskLines.length * lineHeight;
       });
       
-      if (tasks.length > 8) {
-        doc.text(`... e mais ${tasks.length - 8} tarefas`, margin + 5, currentY);
+      if (tasks.length > 6) {
+        doc.text(`... e mais ${tasks.length - 6} tarefas`, margin + 5, currentY);
         currentY += lineHeight;
       }
       currentY += 5;
     }
 
-    // Comments
-    if (comments.length > 0 && currentY < pageHeight - 50) {
+    // Comments Summary
+    if (comments.length > 0 && currentY < pageHeight - 35) {
       doc.setFont('helvetica', 'bold');
       doc.text('Comentários:', margin, currentY);
       currentY += lineHeight;
       
       doc.setFont('helvetica', 'normal');
-      comments.slice(0, 3).forEach(comment => {
-        if (currentY > pageHeight - 40) return;
+      doc.text(`Total de comentários: ${comments.length}`, margin + 5, currentY);
+      currentY += lineHeight;
+      
+      comments.slice(0, 2).forEach(comment => {
+        if (currentY > pageHeight - 30) return;
         
         doc.setFont('helvetica', 'bold');
         doc.text(`${comment.author}:`, margin + 5, currentY);
         doc.setFont('helvetica', 'normal');
         
         const commentLines = doc.splitTextToSize(comment.text, pageWidth - 2 * margin - 10);
-        doc.text(commentLines.slice(0, 2), margin + 5, currentY + lineHeight);
-        currentY += Math.min(commentLines.length, 2) * lineHeight + 8;
+        doc.text(commentLines.slice(0, 1), margin + 5, currentY + lineHeight);
+        currentY += lineHeight + 3;
       });
-      
-      if (comments.length > 3) {
-        doc.text(`... e mais ${comments.length - 3} comentários`, margin + 5, currentY);
-        currentY += lineHeight;
-      }
+      currentY += 3;
     }
 
     // Files
-    if (files.length > 0 && currentY < pageHeight - 30) {
+    if (files.length > 0 && currentY < pageHeight - 25) {
       doc.setFont('helvetica', 'bold');
       doc.text('Arquivos:', margin, currentY);
       currentY += lineHeight;
       
       doc.setFont('helvetica', 'normal');
-      files.slice(0, 5).forEach(file => {
-        if (currentY > pageHeight - 25) return;
+      doc.text(`Total de arquivos: ${files.length}`, margin + 5, currentY);
+      currentY += lineHeight;
+      
+      files.slice(0, 3).forEach(file => {
+        if (currentY > pageHeight - 20) return;
         doc.text(`• ${file.name}`, margin + 5, currentY);
         currentY += lineHeight;
       });
       
-      if (files.length > 5) {
-        doc.text(`... e mais ${files.length - 5} arquivos`, margin + 5, currentY);
+      if (files.length > 3) {
+        doc.text(`... e mais ${files.length - 3} arquivos`, margin + 5, currentY);
       }
     }
 
@@ -306,7 +352,7 @@ const ProjectDetails: React.FC = () => {
               <Download className="h-4 w-4 mr-2" />
               Exportar PDF
             </Button>
-            <Button variant="outline">
+            <Button onClick={handleEditProject} variant="outline">
               <Edit className="h-4 w-4 mr-2" />
               Editar
             </Button>
@@ -369,7 +415,6 @@ const ProjectDetails: React.FC = () => {
           </Card>
         </div>
 
-        {/* Project Details */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <Card>
@@ -466,6 +511,22 @@ const ProjectDetails: React.FC = () => {
             <FileManager projectId={project.id} />
           </TabsContent>
         </Tabs>
+
+        {/* Edit Project Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Projeto</DialogTitle>
+            </DialogHeader>
+            {project && (
+              <ProjectForm 
+                initialData={project}
+                onSubmit={handleProjectUpdate}
+                isEditing={true}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
