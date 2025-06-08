@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 
 export type Project = {
@@ -41,6 +40,7 @@ export type Comment = {
   author: string;
   text: string;
   timestamp: string;
+  createdAt: string;
 };
 
 export type File = {
@@ -52,6 +52,9 @@ export type File = {
   type: string;
   uploadedAt: string;
 };
+
+// Export ProjectFile as an alias for File to maintain compatibility
+export type ProjectFile = File;
 
 export type HistoryEntry = {
   id: string;
@@ -208,11 +211,12 @@ class DatabaseService {
   }
 
   // Comment CRUD operations
-  createComment(commentData: Omit<Comment, 'id' | 'timestamp'>): Comment {
+  createComment(commentData: Omit<Comment, 'id' | 'timestamp' | 'createdAt'>): Comment {
     const newComment: Comment = {
       id: uuidv4(),
       ...commentData,
       timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
     this.db.comments.push(newComment);
     this.saveDatabase();
