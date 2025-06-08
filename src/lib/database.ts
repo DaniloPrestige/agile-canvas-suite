@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 
 export type Project = {
@@ -149,7 +150,11 @@ class DatabaseService {
   deleteProject(id: string): void {
     const projectIndex = this.db.projects.findIndex((project) => project.id === id);
     if (projectIndex !== -1) {
-      this.updateProject(id, { isDeleted: true, status: 'Excluído' });
+      this.db.projects[projectIndex] = {
+        ...this.db.projects[projectIndex],
+        isDeleted: true,
+        updatedAt: new Date().toISOString(),
+      };
       this.saveDatabase();
     }
   }
@@ -218,6 +223,24 @@ class DatabaseService {
     return this.db.comments.filter((comment) => comment.projectId === projectId);
   }
 
+  updateComment(id: string, updates: Partial<Comment>): Comment | null {
+    const commentIndex = this.db.comments.findIndex((comment) => comment.id === id);
+    if (commentIndex === -1) {
+      return null;
+    }
+    this.db.comments[commentIndex] = {
+      ...this.db.comments[commentIndex],
+      ...updates,
+    };
+    this.saveDatabase();
+    return this.db.comments[commentIndex];
+  }
+
+  deleteComment(id: string): void {
+    this.db.comments = this.db.comments.filter((comment) => comment.id !== id);
+    this.saveDatabase();
+  }
+
   // File CRUD operations
   createFile(fileData: Omit<File, 'id' | 'uploadedAt'>): File {
     const newFile: File = {
@@ -232,6 +255,11 @@ class DatabaseService {
 
   getProjectFiles(projectId: string): File[] {
     return this.db.files.filter((file) => file.projectId === projectId);
+  }
+
+  deleteFile(id: string): void {
+    this.db.files = this.db.files.filter((file) => file.id !== id);
+    this.saveDatabase();
   }
 
   // History operations
@@ -298,6 +326,15 @@ class DatabaseService {
 }
 
 export const db = new DatabaseService();
+
+// Export utility functions
+export const formatCurrency = (amount: number, currency: 'BRL' | 'USD' | 'EUR'): string => {
+  return db.formatCurrency(amount, currency);
+};
+
+export const convertCurrency = (amount: number, fromCurrency: 'BRL' | 'USD' | 'EUR', toCurrency: 'BRL' | 'USD' | 'EUR'): number => {
+  return db.convertCurrency(amount, fromCurrency, toCurrency);
+};
 
 // Update the updateProjectProgress function to calculate based on tasks
 const updateProjectProgress = (projectId: string) => {
