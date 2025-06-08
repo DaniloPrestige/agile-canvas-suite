@@ -26,7 +26,7 @@ const CommentManager: React.FC<CommentManagerProps> = ({ projectId }) => {
     if (newComment.trim()) {
       db.createComment({
         projectId,
-        userId: 'current-user', // Em um app real, viria do contexto de autenticação
+        author: 'Usuário', // Added required author field
         text: newComment,
       });
       setNewComment('');

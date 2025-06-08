@@ -26,9 +26,11 @@ const FileManager: React.FC<FileManagerProps> = ({ projectId }) => {
       reader.onload = () => {
         db.createFile({
           projectId,
+          name: file.name, // Added required name field
           filename: file.name,
           url: reader.result as string,
           size: file.size,
+          type: file.type, // Added required type field
         });
         loadFiles();
       };
