@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,17 +14,24 @@ import { db, Task } from '../lib/database';
 
 interface TaskManagerProps {
   projectId: string;
+  onTaskUpdate?: () => void;
 }
 
-const TaskManager: React.FC<TaskManagerProps> = ({ projectId }) => {
+const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    status: 'Pendente' | 'Em Progresso' | 'Concluída';
+    priority: 'Alta' | 'Média' | 'Baixa';
+    assignedTo: string;
+  }>({
     name: '',
     description: '',
-    status: 'Pendente' as const,
-    priority: 'Média' as const,
+    status: 'Pendente',
+    priority: 'Média',
     assignedTo: '',
   });
   const [dueDate, setDueDate] = useState<Date | undefined>();
@@ -72,6 +80,11 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId }) => {
     
     loadTasks();
     resetForm();
+    
+    // Call the callback to update project progress
+    if (onTaskUpdate) {
+      onTaskUpdate();
+    }
   };
 
   const handleEditTask = (task: Task) => {
@@ -90,6 +103,11 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId }) => {
   const handleDeleteTask = (id: string) => {
     db.deleteTask(id);
     loadTasks();
+    
+    // Call the callback to update project progress
+    if (onTaskUpdate) {
+      onTaskUpdate();
+    }
   };
 
   const handleDueDateSelect = (date: Date | undefined) => {
