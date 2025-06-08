@@ -4,16 +4,15 @@ import Layout from '../components/Layout';
 import StatusCard from '../components/StatusCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { db, Project, formatCurrency, convertCurrency } from '../lib/database';
+import { PieChart as PieChartIcon, BarChart3, TrendingUp, Calendar, Users, DollarSign } from 'lucide-react';
+import { db, Project, formatCurrency } from '../lib/database';
 
 const Dashboard: React.FC = () => {
   const [activeProjects, setActiveProjects] = useState<Project[]>([]);
   const [finishedProjects, setFinishedProjects] = useState<Project[]>([]);
   const [deletedProjects, setDeletedProjects] = useState<Project[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [selectedCurrency, setSelectedCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
 
   useEffect(() => {
     const all = db.getAllProjects();
@@ -38,14 +37,8 @@ const Dashboard: React.FC = () => {
   };
 
   const getFinancialData = (projects: Project[]) => {
-    const totalEstimated = projects.reduce((sum, p) => {
-      const convertedValue = convertCurrency(p.estimatedValue, p.currency, selectedCurrency);
-      return sum + convertedValue;
-    }, 0);
-    const totalFinal = projects.reduce((sum, p) => {
-      const convertedValue = convertCurrency(p.finalValue, p.currency, selectedCurrency);
-      return sum + convertedValue;
-    }, 0);
+    const totalEstimated = projects.reduce((sum, p) => sum + p.estimatedValue, 0);
+    const totalFinal = projects.reduce((sum, p) => sum + p.finalValue, 0);
     return { totalEstimated, totalFinal };
   };
 
@@ -85,24 +78,26 @@ const Dashboard: React.FC = () => {
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <Select value={selectedCurrency} onValueChange={(value: 'BRL' | 'USD' | 'EUR') => setSelectedCurrency(value)}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BRL">BRL</SelectItem>
-              <SelectItem value="USD">USD</SelectItem>
-              <SelectItem value="EUR">EUR</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <BarChart3 className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          </div>
         </div>
 
         <Tabs defaultValue="active" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active">Projetos Ativos</TabsTrigger>
-            <TabsTrigger value="finished">Projetos Finalizados</TabsTrigger>
-            <TabsTrigger value="deleted">Projetos Excluídos</TabsTrigger>
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Projetos Ativos
+            </TabsTrigger>
+            <TabsTrigger value="finished" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Projetos Finalizados
+            </TabsTrigger>
+            <TabsTrigger value="deleted" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Projetos Excluídos
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="active" className="space-y-6">
@@ -117,7 +112,10 @@ const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Distribuição por Prioridade</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChartIcon className="w-5 h-5" />
+                    Distribuição por Prioridade
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -144,7 +142,10 @@ const Dashboard: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Projetos por Fase</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Projetos por Fase
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -163,24 +164,30 @@ const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Resumo Financeiro</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Resumo Financeiro
+                  </CardTitle>
                   <CardDescription>Valores dos projetos ativos</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Valor Total Estimado</p>
-                    <p className="text-2xl font-bold">{formatCurrency(activeFinancial.totalEstimated, selectedCurrency)}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(activeFinancial.totalEstimated, 'BRL')}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Valor Total Final</p>
-                    <p className="text-2xl font-bold">{formatCurrency(activeFinancial.totalFinal, selectedCurrency)}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(activeFinancial.totalFinal, 'BRL')}</p>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Média de Progresso</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Média de Progresso
+                  </CardTitle>
                   <CardDescription>Progresso médio dos projetos ativos</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -209,7 +216,10 @@ const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Distribuição por Prioridade</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChartIcon className="w-5 h-5" />
+                    Distribuição por Prioridade
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -236,17 +246,20 @@ const Dashboard: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Resumo Financeiro</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Resumo Financeiro
+                  </CardTitle>
                   <CardDescription>Valores dos projetos finalizados</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Valor Total Estimado</p>
-                    <p className="text-2xl font-bold">{formatCurrency(finishedFinancial.totalEstimated, selectedCurrency)}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(finishedFinancial.totalEstimated, 'BRL')}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Valor Total Final</p>
-                    <p className="text-2xl font-bold">{formatCurrency(finishedFinancial.totalFinal, selectedCurrency)}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(finishedFinancial.totalFinal, 'BRL')}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -264,7 +277,10 @@ const Dashboard: React.FC = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Projetos Excluídos</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Projetos Excluídos
+                </CardTitle>
                 <CardDescription>Análise dos projetos que foram excluídos</CardDescription>
               </CardHeader>
               <CardContent>

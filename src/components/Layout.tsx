@@ -65,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-muted-foreground">
-              © 2025 Sistema de Gerência de Projetos - {getCurrentDate()}
+              © 2025 Sistema de Gerência de Projetos - {getCurrentDate()} - Criado por: Danilo Araujo
             </p>
             <a
               href="mailto:danilo.s.loureiro2@gmail.com"

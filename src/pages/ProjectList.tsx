@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Checkbox } from '@/components/ui/checkbox';
 import ProjectForm from '../components/ProjectForm';
 import StatusCard from '../components/StatusCard';
-import { Search, Eye, Edit, Trash2, Download, MoreVertical, CheckSquare, Archive, X } from 'lucide-react';
+import { Search, Eye, Edit, Trash2, Download, MoreVertical, CheckSquare, X, Plus, Filter, FolderOpen, Users, Clock, Flag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 
@@ -326,7 +326,6 @@ const ProjectList: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Gerência de Projetos - Prestige Cosméticos</h1>
             <p className="text-muted-foreground">Gerencie todos os seus projetos em um só lugar</p>
           </div>
           <div className="flex gap-2">
@@ -336,12 +335,10 @@ const ProjectList: React.FC = () => {
                 Exportar Projetos ({selectedProjects.length})
               </Button>
             )}
-            <Link to="/analytics">
-              <Button variant="outline">Analytics</Button>
-            </Link>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <Button onClick={() => setIsCreateDialogOpen(true)}>
-                + Adicionar Projeto
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Projeto
               </Button>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
                 <DialogHeader className="px-6 py-4 border-b">
@@ -377,32 +374,35 @@ const ProjectList: React.FC = () => {
         <div className="grid grid-cols-3 bg-gray-100 p-1 rounded-lg">
           <button
             onClick={() => setActiveTab('active')}
-            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors ${
+            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
               activeTab === 'active'
                 ? 'bg-white text-blue-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
+            <FolderOpen className="w-4 h-4" />
             Projetos Ativos ({tabCounts.active})
           </button>
           <button
             onClick={() => setActiveTab('finished')}
-            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors ${
+            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
               activeTab === 'finished'
                 ? 'bg-white text-blue-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
+            <CheckSquare className="w-4 h-4" />
             Finalizados ({tabCounts.finished})
           </button>
           <button
             onClick={() => setActiveTab('deleted')}
-            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors ${
+            className={`px-6 py-3 rounded-md font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
               activeTab === 'deleted'
                 ? 'bg-white text-blue-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
+            <Trash2 className="w-4 h-4" />
             Excluídos ({tabCounts.deleted})
           </button>
         </div>
@@ -419,28 +419,31 @@ const ProjectList: React.FC = () => {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="min-w-[150px]">
-                <SelectValue placeholder="Todos os status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="Pendente">Pendente</SelectItem>
-                <SelectItem value="Em Progresso">Em Progresso</SelectItem>
-                <SelectItem value="Atrasado">Atrasado</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="min-w-[180px]">
-                <SelectValue placeholder="Todas as prioridades" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as prioridades</SelectItem>
-                <SelectItem value="Alta">Alta</SelectItem>
-                <SelectItem value="Média">Média</SelectItem>
-                <SelectItem value="Baixa">Baixa</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="min-w-[150px]">
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="Pendente">Pendente</SelectItem>
+                  <SelectItem value="Em Progresso">Em Progresso</SelectItem>
+                  <SelectItem value="Atrasado">Atrasado</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="min-w-[180px]">
+                  <SelectValue placeholder="Todas as prioridades" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as prioridades</SelectItem>
+                  <SelectItem value="Alta">Alta</SelectItem>
+                  <SelectItem value="Média">Média</SelectItem>
+                  <SelectItem value="Baixa">Baixa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
 
@@ -513,6 +516,7 @@ const ProjectList: React.FC = () => {
         {/* Projects Grid */}
         {filteredProjects.length === 0 ? (
           <div className="text-center py-12">
+            <FolderOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 text-lg">Nenhum projeto encontrado</p>
             <p className="text-gray-400 text-sm mt-2">
               {projects.length === 0 
@@ -532,8 +536,18 @@ const ProjectList: React.FC = () => {
                         onCheckedChange={(checked) => handleSelectProject(project.id, checked as boolean)}
                       />
                       <div className="flex-1">
-                        <h3 className="font-semibold text-lg text-gray-900 mb-1">{project.name}</h3>
-                        <p className="text-gray-600 text-sm">{project.client}</p>
+                        <Link 
+                          to={`/project/${project.id}`}
+                          className="hover:text-blue-600 transition-colors"
+                        >
+                          <h3 className="font-semibold text-lg text-gray-900 mb-1 hover:text-blue-600 cursor-pointer">
+                            {project.name}
+                          </h3>
+                        </Link>
+                        <div className="flex items-center gap-2 text-gray-600 text-sm">
+                          <Users className="w-3 h-3" />
+                          {project.client}
+                        </div>
                       </div>
                     </div>
                     <div className="flex space-x-1">
@@ -595,19 +609,28 @@ const ProjectList: React.FC = () => {
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Responsável:</span>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Users className="w-3 h-3" />
+                        Responsável:
+                      </div>
                       <span className="text-sm font-medium">{project.responsible}</span>
                     </div>
 
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Prioridade:</span>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Flag className="w-3 h-3" />
+                        Prioridade:
+                      </div>
                       <span className={`text-sm font-medium ${getPriorityColor(project.priority)}`}>
                         {project.priority}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Status:</span>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Clock className="w-3 h-3" />
+                        Status:
+                      </div>
                       <Badge className={getStatusColor(project.status)}>
                         {project.status}
                       </Badge>

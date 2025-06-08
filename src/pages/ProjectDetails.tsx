@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Flag, Clock, User, DollarSign } from 'lucide-react';
+import { ArrowLeft, Edit, Flag, Clock, User, DollarSign, FileText, Calendar, TrendingUp } from 'lucide-react';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -271,7 +272,10 @@ const ProjectDetails: React.FC = () => {
           <CardContent className="p-6">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold">Progresso do Projeto</h3>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  <h3 className="font-semibold">Progresso do Projeto</h3>
+                </div>
                 <span className="text-sm text-muted-foreground">{project.progress}%</span>
               </div>
               <ProgressBar progress={project.progress} showPercentage={false} />
@@ -282,7 +286,10 @@ const ProjectDetails: React.FC = () => {
         {/* Tabs */}
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="details">Detalhes</TabsTrigger>
+            <TabsTrigger value="details" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Detalhes
+            </TabsTrigger>
             <TabsTrigger value="tasks">Tarefas</TabsTrigger>
             <TabsTrigger value="comments">Comentários</TabsTrigger>
             <TabsTrigger value="files">Arquivos</TabsTrigger>
@@ -293,7 +300,10 @@ const ProjectDetails: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Informações Gerais</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Informações Gerais
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
@@ -301,7 +311,10 @@ const ProjectDetails: React.FC = () => {
                     <p className="font-medium">{project.phase}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Período</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Período</p>
+                    </div>
                     <p className="font-medium">
                       {formatDate(project.startDate)} - {formatDate(project.endDate)}
                     </p>
@@ -315,7 +328,10 @@ const ProjectDetails: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Valores</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Valores
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
