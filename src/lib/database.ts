@@ -20,6 +20,7 @@ export type Project = {
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
+  isFinished: boolean; // Added for Analytics compatibility
 };
 
 export type Task = {
@@ -42,16 +43,19 @@ export type Comment = {
   text: string;
   timestamp: string;
   createdAt: string;
+  userId?: string; // Added for CommentManager compatibility
 };
 
 export type File = {
   id: string;
   projectId: string;
   name: string;
+  filename?: string; // Added for FileManager compatibility
   url: string;
   size: number;
   type: string;
   uploadedAt: string;
+  uploadDate?: string; // Added for FileManager compatibility
 };
 
 // Export ProjectFile as an alias for File to maintain compatibility
@@ -103,7 +107,7 @@ class DatabaseService {
   }
 
   // Project CRUD operations
-  createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'isDeleted'>): Project {
+  createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'isDeleted' | 'isFinished'>): Project {
     const newProject: Project = {
       id: uuidv4(),
       ...projectData,
@@ -111,6 +115,7 @@ class DatabaseService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       isDeleted: false,
+      isFinished: projectData.status === 'Concluído',
     };
     this.db.projects.push(newProject);
     this.saveDatabase();
@@ -142,11 +147,13 @@ class DatabaseService {
     if (projectIndex === -1) {
       return null;
     }
-    this.db.projects[projectIndex] = {
+    const updatedProject = {
       ...this.db.projects[projectIndex],
       ...updates,
       updatedAt: new Date().toISOString(),
+      isFinished: updates.status === 'Concluído' || this.db.projects[projectIndex].status === 'Concluído',
     };
+    this.db.projects[projectIndex] = updatedProject;
     this.saveDatabase();
     return this.db.projects[projectIndex];
   }
@@ -251,7 +258,9 @@ class DatabaseService {
     const newFile: File = {
       id: uuidv4(),
       ...fileData,
+      filename: fileData.filename || fileData.name, // Ensure filename is set
       uploadedAt: new Date().toISOString(),
+      uploadDate: new Date().toISOString(), // Add uploadDate for compatibility
     };
     this.db.files.push(newFile);
     this.saveDatabase();
@@ -351,7 +360,10 @@ const updateProjectProgress = (projectId: string) => {
     // Get current project data
     const project = db.getProject(projectId);
     if (project) {
-      db.updateProject(projectId, { progress });
+      db.updateProject(projectId, { 
+        progress,
+        isFinished: progress === 100 || project.status === 'Concluído'
+      });
       db.addHistoryEntry(projectId, 'system', `Progresso atualizado automaticamente para ${progress}% baseado nas tarefas concluídas (${completedTasks.length}/${tasks.length})`);
     }
   } catch (error) {
