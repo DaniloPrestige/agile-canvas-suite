@@ -16,10 +16,10 @@ const Dashboard: React.FC = () => {
   const [selectedCurrency, setSelectedCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
 
   useEffect(() => {
-    const active = db.getActiveProjects();
-    const finished = db.getFinishedProjects();
-    const deleted = db.getDeletedProjects();
-    const all = [...active, ...finished, ...deleted];
+    const all = db.getAllProjects();
+    const active = all.filter(p => p.status !== 'Concluído' && !p.isDeleted);
+    const finished = all.filter(p => p.status === 'Concluído' && !p.isDeleted);
+    const deleted = all.filter(p => p.isDeleted);
 
     setActiveProjects(active);
     setFinishedProjects(finished);

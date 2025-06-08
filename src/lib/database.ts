@@ -1,27 +1,27 @@
-// Database setup for local SQLite storage
-export interface Project {
+import { v4 as uuidv4 } from 'uuid';
+
+export type Project = {
   id: string;
   name: string;
   client: string;
-  responsible: string;
-  priority: 'Alta' | 'Média' | 'Baixa';
-  status: 'Em Progresso' | 'Pendente' | 'Concluído' | 'Atrasado';
-  phase: 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento';
+  description?: string;
   startDate: string;
   endDate: string;
   estimatedValue: number;
   finalValue: number;
   currency: 'BRL' | 'USD' | 'EUR';
-  description: string;
+  responsible: string;
+  status: 'Pendente' | 'Em Progresso' | 'Concluído' | 'Atrasado';
+  priority: 'Alta' | 'Média' | 'Baixa';
+  phase: 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento';
   tags: string[];
   progress: number;
-  isDeleted: boolean;
-  isFinished: boolean;
   createdAt: string;
   updatedAt: string;
-}
+  isDeleted: boolean;
+};
 
-export interface Task {
+export type Task = {
   id: string;
   projectId: string;
   name: string;
@@ -32,542 +32,313 @@ export interface Task {
   assignedTo: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export interface Comment {
+export type Comment = {
   id: string;
   projectId: string;
-  taskId?: string;
-  userId: string;
+  author: string;
   text: string;
-  createdAt: string;
-}
+  timestamp: string;
+};
 
-export interface ProjectFile {
+export type File = {
   id: string;
   projectId: string;
-  filename: string;
+  name: string;
   url: string;
   size: number;
-  uploadDate: string;
-}
+  type: string;
+  uploadedAt: string;
+};
 
-export interface HistoryEntry {
+export type HistoryEntry = {
   id: string;
   projectId: string;
-  userId: string;
+  user: string;
   action: string;
   timestamp: string;
-  details?: any;
-  type: 'project' | 'task' | 'comment' | 'file';
-  icon?: string;
-}
+};
 
-class LocalDatabase {
-  private projects: Project[] = [];
-  private tasks: Task[] = [];
-  private comments: Comment[] = [];
-  private files: ProjectFile[] = [];
-  private history: HistoryEntry[] = [];
+type Database = {
+  projects: Project[];
+  tasks: Task[];
+  comments: Comment[];
+  files: File[];
+  history: HistoryEntry[];
+};
+
+const initialDatabase: Database = {
+  projects: [],
+  tasks: [],
+  comments: [],
+  files: [],
+  history: [],
+};
+
+class DatabaseService {
+  private db: Database;
 
   constructor() {
-    this.loadData();
+    this.db = this.loadDatabase();
   }
 
-  private loadData() {
+  private loadDatabase(): Database {
     try {
-      const storedProjects = localStorage.getItem('projects');
-      if (storedProjects) {
-        this.projects = JSON.parse(storedProjects);
-      }
-
-      const storedTasks = localStorage.getItem('tasks');
-      if (storedTasks) {
-        this.tasks = JSON.parse(storedTasks);
-      }
-
-      const storedComments = localStorage.getItem('comments');
-      if (storedComments) {
-        this.comments = JSON.parse(storedComments);
-      }
-
-      const storedFiles = localStorage.getItem('files');
-      if (storedFiles) {
-        this.files = JSON.parse(storedFiles);
-      }
-
-      const storedHistory = localStorage.getItem('history');
-      if (storedHistory) {
-        this.history = JSON.parse(storedHistory);
-      }
+      const storedDb = localStorage.getItem('database');
+      return storedDb ? JSON.parse(storedDb) : initialDatabase;
     } catch (error) {
-      console.error('Erro ao carregar dados do localStorage:', error);
+      console.error('Error loading database from localStorage:', error);
+      return initialDatabase;
     }
   }
 
-  private saveData() {
-    try {
-      localStorage.setItem('projects', JSON.stringify(this.projects));
-      localStorage.setItem('tasks', JSON.stringify(this.tasks));
-      localStorage.setItem('comments', JSON.stringify(this.comments));
-      localStorage.setItem('files', JSON.stringify(this.files));
-      localStorage.setItem('history', JSON.stringify(this.history));
-    } catch (error) {
-      console.error('Erro ao salvar dados no localStorage:', error);
-    }
+  private saveDatabase() {
+    localStorage.setItem('database', JSON.stringify(this.db));
   }
 
-  // Enhanced history tracking with detailed information
-  addHistoryEntry(
-    projectId: string, 
-    userId: string, 
-    action: string, 
-    type: 'project' | 'task' | 'comment' | 'file' = 'project',
-    details?: any,
-    icon?: string
-  ): void {
-    const newEntry: HistoryEntry = {
-      id: crypto.randomUUID(),
-      projectId,
-      userId,
-      action,
-      timestamp: new Date().toISOString(),
-      type,
-      details,
-      icon
-    };
-    this.history.push(newEntry);
-    this.saveData();
-  }
-
-  getProjectHistory(projectId: string): HistoryEntry[] {
-    return this.history
-      .filter((entry) => entry.projectId === projectId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }
-
-  // Project CRUD operations with enhanced history
-  createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted' | 'isFinished'>): Project {
+  // Project CRUD operations
+  createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'isDeleted'>): Project {
     const newProject: Project = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       ...projectData,
-      isDeleted: false,
-      isFinished: false,
+      progress: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      isDeleted: false,
     };
-    this.projects.push(newProject);
-    this.saveData();
-    this.addHistoryEntry(
-      newProject.id, 
-      'system', 
-      `Projeto "${newProject.name}" criado`, 
-      'project',
-      {
-        client: newProject.client,
-        responsible: newProject.responsible,
-        priority: newProject.priority,
-        status: newProject.status
-      },
-      '🎯'
-    );
+    this.db.projects.push(newProject);
+    this.saveDatabase();
     return newProject;
   }
 
-  getProject(id: string): Project | undefined {
-    return this.projects.find((project) => project.id === id && !project.isDeleted);
+  getProject(id: string): Project | null {
+    return this.db.projects.find((project) => project.id === id) || null;
   }
 
   getAllProjects(): Project[] {
-    return this.projects;
+    return this.db.projects;
   }
 
   getActiveProjects(): Project[] {
-    return this.projects.filter((project) => !project.isDeleted && !project.isFinished);
-  }
-
-  getDeletedProjects(): Project[] {
-    return this.projects.filter((project) => project.isDeleted);
+    return this.db.projects.filter(p => p.status !== 'Concluído' && !p.isDeleted);
   }
 
   getFinishedProjects(): Project[] {
-    return this.projects.filter((project) => project.isFinished && !project.isDeleted);
+    return this.db.projects.filter(p => p.status === 'Concluído' && !p.isDeleted);
   }
 
-  updateProject(id: string, updates: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>>): Project | undefined {
-    const projectIndex = this.projects.findIndex((project) => project.id === id);
-    if (projectIndex === -1) {
-      return undefined;
-    }
+  getDeletedProjects(): Project[] {
+    return this.db.projects.filter(p => p.isDeleted);
+  }
 
-    const oldProject = { ...this.projects[projectIndex] };
-    this.projects[projectIndex] = {
-      ...this.projects[projectIndex],
+  updateProject(id: string, updates: Partial<Project>): Project | null {
+    const projectIndex = this.db.projects.findIndex((project) => project.id === id);
+    if (projectIndex === -1) {
+      return null;
+    }
+    this.db.projects[projectIndex] = {
+      ...this.db.projects[projectIndex],
       ...updates,
       updatedAt: new Date().toISOString(),
     };
-    this.saveData();
-    
-    // Track detailed changes with emojis
-    const changes: string[] = [];
-    if (oldProject.name !== this.projects[projectIndex].name) {
-      changes.push(`📝 Nome alterado: "${oldProject.name}" → "${this.projects[projectIndex].name}"`);
-      this.addHistoryEntry(id, 'user', `Nome do projeto alterado para "${this.projects[projectIndex].name}"`, 'project', { oldValue: oldProject.name, newValue: this.projects[projectIndex].name }, '📝');
-    }
-    if (oldProject.client !== this.projects[projectIndex].client) {
-      changes.push(`🏢 Cliente alterado: "${oldProject.client}" → "${this.projects[projectIndex].client}"`);
-      this.addHistoryEntry(id, 'user', `Cliente alterado para "${this.projects[projectIndex].client}"`, 'project', { oldValue: oldProject.client, newValue: this.projects[projectIndex].client }, '🏢');
-    }
-    if (oldProject.responsible !== this.projects[projectIndex].responsible) {
-      changes.push(`👤 Responsável alterado: "${oldProject.responsible}" → "${this.projects[projectIndex].responsible}"`);
-      this.addHistoryEntry(id, 'user', `Responsável alterado para "${this.projects[projectIndex].responsible}"`, 'project', { oldValue: oldProject.responsible, newValue: this.projects[projectIndex].responsible }, '👤');
-    }
-    if (oldProject.status !== this.projects[projectIndex].status) {
-      changes.push(`🔄 Status alterado: "${oldProject.status}" → "${this.projects[projectIndex].status}"`);
-      this.addHistoryEntry(id, 'user', `Status alterado para "${this.projects[projectIndex].status}"`, 'project', { oldValue: oldProject.status, newValue: this.projects[projectIndex].status }, '🔄');
-    }
-    if (oldProject.priority !== this.projects[projectIndex].priority) {
-      changes.push(`⚡ Prioridade alterada: "${oldProject.priority}" → "${this.projects[projectIndex].priority}"`);
-      this.addHistoryEntry(id, 'user', `Prioridade alterada para "${this.projects[projectIndex].priority}"`, 'project', { oldValue: oldProject.priority, newValue: this.projects[projectIndex].priority }, '⚡');
-    }
-    if (oldProject.phase !== this.projects[projectIndex].phase) {
-      changes.push(`🎭 Fase alterada: "${oldProject.phase}" → "${this.projects[projectIndex].phase}"`);
-      this.addHistoryEntry(id, 'user', `Fase alterada para "${this.projects[projectIndex].phase}"`, 'project', { oldValue: oldProject.phase, newValue: this.projects[projectIndex].phase }, '🎭');
-    }
-    if (oldProject.progress !== this.projects[projectIndex].progress) {
-      changes.push(`📊 Progresso alterado: ${oldProject.progress}% → ${this.projects[projectIndex].progress}%`);
-      this.addHistoryEntry(id, 'user', `Progresso atualizado para ${this.projects[projectIndex].progress}%`, 'project', { oldValue: oldProject.progress, newValue: this.projects[projectIndex].progress }, '📊');
-    }
-    if (oldProject.estimatedValue !== this.projects[projectIndex].estimatedValue) {
-      this.addHistoryEntry(id, 'user', `Valor estimado alterado`, 'project', { oldValue: oldProject.estimatedValue, newValue: this.projects[projectIndex].estimatedValue }, '💰');
-    }
-    if (oldProject.finalValue !== this.projects[projectIndex].finalValue) {
-      this.addHistoryEntry(id, 'user', `Valor final alterado`, 'project', { oldValue: oldProject.finalValue, newValue: this.projects[projectIndex].finalValue }, '💰');
-    }
-    if (oldProject.startDate !== this.projects[projectIndex].startDate) {
-      this.addHistoryEntry(id, 'user', `Data de início alterada`, 'project', { oldValue: oldProject.startDate, newValue: this.projects[projectIndex].startDate }, '📅');
-    }
-    if (oldProject.endDate !== this.projects[projectIndex].endDate) {
-      this.addHistoryEntry(id, 'user', `Data de fim alterada`, 'project', { oldValue: oldProject.endDate, newValue: this.projects[projectIndex].endDate }, '📅');
-    }
-    if (oldProject.description !== this.projects[projectIndex].description) {
-      this.addHistoryEntry(id, 'user', `Descrição do projeto atualizada`, 'project', { changed: true }, '📄');
-    }
-    
-    return this.projects[projectIndex];
+    this.saveDatabase();
+    return this.db.projects[projectIndex];
   }
 
-  deleteProject(id: string): boolean {
-    const project = this.getProject(id);
-    if (!project) {
-      return false;
+  deleteProject(id: string): void {
+    const projectIndex = this.db.projects.findIndex((project) => project.id === id);
+    if (projectIndex !== -1) {
+      this.updateProject(id, { isDeleted: true, status: 'Excluído' });
+      this.saveDatabase();
     }
-    project.isDeleted = true;
-    this.saveData();
-    this.addHistoryEntry(id, 'user', `Projeto "${project.name}" movido para lixeira`, 'project', {}, '🗑️');
-    return true;
   }
 
-  finishProject(id: string): boolean {
-    const projectIndex = this.projects.findIndex((project) => project.id === id);
-    if (projectIndex === -1) {
-      return false;
+  restoreProject(id: string): void {
+    const projectIndex = this.db.projects.findIndex((project) => project.id === id);
+    if (projectIndex !== -1) {
+      this.updateProject(id, { isDeleted: false });
+      this.saveDatabase();
     }
-    this.projects[projectIndex].isFinished = true;
-    this.projects[projectIndex].isDeleted = false;
-    this.saveData();
-    this.addHistoryEntry(id, 'user', `Projeto "${this.projects[projectIndex].name}" finalizado`, 'project', {}, '✅');
-    return true;
   }
 
-  restoreProject(id: string): boolean {
-    const projectIndex = this.projects.findIndex((project) => project.id === id);
-    if (projectIndex === -1) {
-      return false;
-    }
-    this.projects[projectIndex].isDeleted = false;
-    this.projects[projectIndex].isFinished = false;
-    this.saveData();
-    this.addHistoryEntry(id, 'user', `Projeto "${this.projects[projectIndex].name}" restaurado`, 'project', {}, '♻️');
-    return true;
-  }
-
-  // Task CRUD operations with enhanced history
+  // Task CRUD operations
   createTask(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Task {
     const newTask: Task = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       ...taskData,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    this.tasks.push(newTask);
-    this.saveData();
-    this.addHistoryEntry(
-      taskData.projectId, 
-      'user', 
-      `Nova tarefa criada: "${taskData.name}"`, 
-      'task',
-      {
-        taskName: taskData.name,
-        priority: taskData.priority,
-        status: taskData.status,
-        assignedTo: taskData.assignedTo
-      },
-      '📋'
-    );
+    this.db.tasks.push(newTask);
+    this.saveDatabase();
     return newTask;
   }
 
-  getTask(id: string): Task | undefined {
-    return this.tasks.find((task) => task.id === id);
+  getTask(id: string): Task | null {
+    return this.db.tasks.find((task) => task.id === id) || null;
   }
 
   getProjectTasks(projectId: string): Task[] {
-    return this.tasks.filter((task) => task.projectId === projectId);
+    return this.db.tasks.filter((task) => task.projectId === projectId);
   }
 
-  updateTask(id: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>): Task | undefined {
-    const taskIndex = this.tasks.findIndex((task) => task.id === id);
+  updateTask(id: string, updates: Partial<Task>): Task | null {
+    const taskIndex = this.db.tasks.findIndex((task) => task.id === id);
     if (taskIndex === -1) {
-      return undefined;
+      return null;
     }
-
-    const oldTask = this.tasks[taskIndex];
-    this.tasks[taskIndex] = {
-      ...this.tasks[taskIndex],
+    this.db.tasks[taskIndex] = {
+      ...this.db.tasks[taskIndex],
       ...updates,
       updatedAt: new Date().toISOString(),
     };
-    this.saveData();
-    
-    // Track task changes with specific icons
-    if (updates.status && updates.status !== oldTask.status) {
-      let icon = '📝';
-      if (updates.status === 'Concluída') icon = '✅';
-      else if (updates.status === 'Em Progresso') icon = '🔄';
-      else if (updates.status === 'Pendente') icon = '⏳';
-      
-      this.addHistoryEntry(
-        oldTask.projectId, 
-        'user', 
-        `Tarefa "${oldTask.name}" alterada de "${oldTask.status}" para "${updates.status}"`, 
-        'task',
-        {
-          taskName: oldTask.name,
-          oldStatus: oldTask.status,
-          newStatus: updates.status
-        },
-        icon
-      );
-    } else {
-      this.addHistoryEntry(
-        oldTask.projectId, 
-        'user', 
-        `Tarefa "${oldTask.name}" atualizada`, 
-        'task',
-        { taskName: oldTask.name },
-        '📝'
-      );
-    }
-    
-    return this.tasks[taskIndex];
+    this.saveDatabase();
+    return this.db.tasks[taskIndex];
   }
 
-  deleteTask(id: string): boolean {
-    const taskIndex = this.tasks.findIndex((task) => task.id === id);
-    if (taskIndex === -1) {
-      return false;
-    }
-
-    const task = this.tasks[taskIndex];
-    this.addHistoryEntry(
-      task.projectId, 
-      'user', 
-      `Tarefa "${task.name}" excluída`, 
-      'task',
-      { taskName: task.name },
-      '🗑️'
-    );
-    this.tasks.splice(taskIndex, 1);
-    this.saveData();
-    return true;
+  deleteTask(id: string): void {
+    this.db.tasks = this.db.tasks.filter((task) => task.id !== id);
+    this.saveDatabase();
   }
 
-  // Comment CRUD operations with enhanced history
-  createComment(commentData: Omit<Comment, 'id' | 'createdAt'>): Comment {
+  // Comment CRUD operations
+  createComment(commentData: Omit<Comment, 'id' | 'timestamp'>): Comment {
     const newComment: Comment = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       ...commentData,
-      createdAt: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
     };
-    this.comments.push(newComment);
-    this.saveData();
-    this.addHistoryEntry(
-      commentData.projectId, 
-      commentData.userId, 
-      `Novo comentário adicionado`, 
-      'comment',
-      {
-        comment: commentData.text.substring(0, 50) + (commentData.text.length > 50 ? '...' : ''),
-        taskId: commentData.taskId
-      },
-      '💬'
-    );
+    this.db.comments.push(newComment);
+    this.saveDatabase();
     return newComment;
   }
 
-  getComment(id: string): Comment | undefined {
-    return this.comments.find((comment) => comment.id === id);
-  }
-
   getProjectComments(projectId: string): Comment[] {
-    return this.comments.filter((comment) => comment.projectId === projectId);
+    return this.db.comments.filter((comment) => comment.projectId === projectId);
   }
 
-  updateComment(id: string, updates: Partial<Omit<Comment, 'id' | 'createdAt'>>): Comment | undefined {
-    const commentIndex = this.comments.findIndex((comment) => comment.id === id);
-    if (commentIndex === -1) {
-      return undefined;
-    }
-
-    const comment = this.comments[commentIndex];
-    this.comments[commentIndex] = {
-      ...this.comments[commentIndex],
-      ...updates,
-    };
-    this.saveData();
-    this.addHistoryEntry(
-      comment.projectId, 
-      comment.userId, 
-      `Comentário editado`, 
-      'comment',
-      { edited: true },
-      '✏️'
-    );
-    return this.comments[commentIndex];
-  }
-
-  deleteComment(id: string): boolean {
-    const commentIndex = this.comments.findIndex((comment) => comment.id === id);
-    if (commentIndex === -1) {
-      return false;
-    }
-
-    const comment = this.comments[commentIndex];
-    this.addHistoryEntry(
-      comment.projectId, 
-      comment.userId, 
-      `Comentário excluído`, 
-      'comment',
-      {},
-      '🗑️'
-    );
-    this.comments.splice(commentIndex, 1);
-    this.saveData();
-    return true;
-  }
-
-  // File CRUD operations with enhanced history
-  createFile(fileData: Omit<ProjectFile, 'id' | 'uploadDate'>): ProjectFile {
-    const newFile: ProjectFile = {
-      id: crypto.randomUUID(),
+  // File CRUD operations
+  createFile(fileData: Omit<File, 'id' | 'uploadedAt'>): File {
+    const newFile: File = {
+      id: uuidv4(),
       ...fileData,
-      uploadDate: new Date().toISOString(),
+      uploadedAt: new Date().toISOString(),
     };
-    this.files.push(newFile);
-    this.saveData();
-    this.addHistoryEntry(
-      fileData.projectId, 
-      'user', 
-      `Arquivo "${fileData.filename}" adicionado`, 
-      'file',
-      {
-        filename: fileData.filename,
-        size: fileData.size
-      },
-      '📎'
-    );
+    this.db.files.push(newFile);
+    this.saveDatabase();
     return newFile;
   }
 
-  getFile(id: string): ProjectFile | undefined {
-    return this.files.find((file) => file.id === id);
+  getProjectFiles(projectId: string): File[] {
+    return this.db.files.filter((file) => file.projectId === projectId);
   }
 
-  getProjectFiles(projectId: string): ProjectFile[] {
-    return this.files.filter((file) => file.projectId === projectId);
+  // History operations
+  addHistoryEntry(projectId: string, user: string, action: string): void {
+    const newEntry: HistoryEntry = {
+      id: uuidv4(),
+      projectId,
+      user,
+      action,
+      timestamp: new Date().toISOString(),
+    };
+    this.db.history.push(newEntry);
+    this.saveDatabase();
   }
 
-  deleteFile(id: string): boolean {
-    const fileIndex = this.files.findIndex((file) => file.id === id);
-    if (fileIndex === -1) {
-      return false;
+  getProjectHistory(projectId: string): HistoryEntry[] {
+    return this.db.history.filter((entry) => entry.projectId === projectId);
+  }
+
+  // Utility functions
+  formatCurrency(amount: number, currency: 'BRL' | 'USD' | 'EUR'): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  }
+
+  convertCurrency(amount: number, fromCurrency: 'BRL' | 'USD' | 'EUR', toCurrency: 'BRL' | 'USD' | 'EUR'): number {
+    if (fromCurrency === toCurrency) {
+      return amount;
     }
 
-    const file = this.files[fileIndex];
-    this.addHistoryEntry(
-      file.projectId, 
-      'user', 
-      `Arquivo "${file.filename}" excluído`, 
-      'file',
-      { filename: file.filename },
-      '🗑️'
-    );
-    this.files.splice(fileIndex, 1);
-    this.saveData();
-    return true;
-  }
+    const exchangeRates = {
+      BRLtoUSD: 0.20,
+      BRLtoEUR: 0.18,
+      USDtoBRL: 4.95,
+      USDtoEUR: 0.92,
+      EURtoBRL: 5.41,
+      EURtoUSD: 1.09,
+    };
 
-  permanentDeleteProject(id: string): boolean {
-    const projectIndex = this.projects.findIndex((project) => project.id === id);
-    if (projectIndex === -1) {
-      return false;
+    try {
+      if (fromCurrency === 'BRL' && toCurrency === 'USD') {
+        return amount * exchangeRates.BRLtoUSD;
+      } else if (fromCurrency === 'BRL' && toCurrency === 'EUR') {
+        return amount * exchangeRates.BRLtoEUR;
+      } else if (fromCurrency === 'USD' && toCurrency === 'BRL') {
+        return amount * exchangeRates.USDtoBRL;
+      } else if (fromCurrency === 'USD' && toCurrency === 'EUR') {
+        return amount * exchangeRates.USDtoEUR;
+      } else if (fromCurrency === 'EUR' && toCurrency === 'BRL') {
+        return amount * exchangeRates.EURtoBRL;
+      } else if (fromCurrency === 'EUR' && toCurrency === 'USD') {
+        return amount * exchangeRates.EURtoUSD;
+      } else {
+        console.warn(`Unsupported currency conversion: ${fromCurrency} to ${toCurrency}`);
+        return amount;
+      }
+    } catch (error) {
+      console.error('Currency conversion error:', error);
+      return amount;
     }
-    const project = this.projects[projectIndex];
-    this.addHistoryEntry(id, 'user', `Projeto "${project.name}" excluído permanentemente`, 'project', {}, '💀');
-    this.projects.splice(projectIndex, 1);
-    this.saveData();
-    return true;
   }
 }
 
-export const db = new LocalDatabase();
+export const db = new DatabaseService();
 
-// Currency utilities
-export const CURRENCIES = {
-  BRL: { symbol: 'R$', name: 'Real Brasileiro' },
-  USD: { symbol: '$', name: 'Dólar Americano' },
-  EUR: { symbol: '€', name: 'Euro' }
-} as const;
-
-export const formatCurrency = (value: number, currency: 'BRL' | 'USD' | 'EUR') => {
-  const currencyMap = {
-    BRL: 'pt-BR',
-    USD: 'en-US',
-    EUR: 'de-DE'
-  };
-
-  return new Intl.NumberFormat(currencyMap[currency], {
-    style: 'currency',
-    currency: currency
-  }).format(value);
+// Update the updateProjectProgress function to calculate based on tasks
+const updateProjectProgress = (projectId: string) => {
+  try {
+    const tasks = db.getProjectTasks(projectId);
+    const completedTasks = tasks.filter(task => task.status === 'Concluída');
+    const progress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
+    
+    // Get current project data
+    const project = db.getProject(projectId);
+    if (project) {
+      db.updateProject(projectId, { progress });
+      db.addHistoryEntry(projectId, 'system', `Progresso atualizado automaticamente para ${progress}% baseado nas tarefas concluídas (${completedTasks.length}/${tasks.length})`);
+    }
+  } catch (error) {
+    console.error('Error updating project progress:', error);
+  }
 };
 
-// Exchange rates for conversion (in a real app, this would come from an API)
-export const EXCHANGE_RATES = {
-  BRL: { USD: 0.20, EUR: 0.18 },
-  USD: { BRL: 5.00, EUR: 0.92 },
-  EUR: { BRL: 5.50, USD: 1.09 }
+// Update createTask function to auto-update progress
+export const createTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const task = db.createTask(taskData);
+  updateProjectProgress(taskData.projectId);
+  return task;
 };
 
-export const convertCurrency = (amount: number, from: 'BRL' | 'USD' | 'EUR', to: 'BRL' | 'USD' | 'EUR'): number => {
-  if (from === to) return amount;
-  
-  if (from === 'BRL') {
-    return amount * EXCHANGE_RATES.BRL[to as keyof typeof EXCHANGE_RATES.BRL];
-  } else if (from === 'USD') {
-    return amount * EXCHANGE_RATES.USD[to as keyof typeof EXCHANGE_RATES.USD];
-  } else {
-    return amount * EXCHANGE_RATES.EUR[to as keyof typeof EXCHANGE_RATES.EUR];
+// Update updateTask function to auto-update progress
+export const updateTask = (id: string, updates: Partial<Task>) => {
+  const task = db.updateTask(id, updates);
+  if (task) {
+    updateProjectProgress(task.projectId);
+  }
+  return task;
+};
+
+// Update deleteTask function to auto-update progress
+export const deleteTask = (id: string) => {
+  const task = db.getTask(id);
+  if (task) {
+    const projectId = task.projectId;
+    db.deleteTask(id);
+    updateProjectProgress(projectId);
   }
 };

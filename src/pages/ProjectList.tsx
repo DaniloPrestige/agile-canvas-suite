@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Checkbox } from '@/components/ui/checkbox';
 import ProjectForm from '../components/ProjectForm';
 import StatusCard from '../components/StatusCard';
-import { Search, Eye, Edit, Trash2, Download, MoreVertical, CheckSquare, Archive } from 'lucide-react';
+import { Search, Eye, Edit, Trash2, Download, MoreVertical, CheckSquare, Archive, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 
@@ -24,6 +24,7 @@ const ProjectList: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'deleted'>('active');
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -141,21 +142,26 @@ const ProjectList: React.FC = () => {
   const handleFinishProject = (project: Project) => {
     db.updateProject(project.id, { status: 'Concluído' });
     loadProjects();
+    setActiveTab('finished');
   };
 
   const handleDeleteProject = (project: Project) => {
     db.deleteProject(project.id);
     loadProjects();
+    setActiveTab('deleted');
   };
 
   const handleStatusChange = (project: Project, newStatus: string) => {
     if (newStatus === 'active') {
       db.restoreProject(project.id);
       db.updateProject(project.id, { status: 'Em Progresso' });
+      setActiveTab('active');
     } else if (newStatus === 'finished') {
       db.updateProject(project.id, { status: 'Concluído' });
+      setActiveTab('finished');
     } else if (newStatus === 'deleted') {
       db.deleteProject(project.id);
+      setActiveTab('deleted');
     }
     loadProjects();
   };
@@ -175,6 +181,32 @@ const ProjectList: React.FC = () => {
     } else {
       setSelectedProjects([]);
     }
+  };
+
+  const clearSelection = () => {
+    setSelectedProjects([]);
+  };
+
+  const bulkChangeStatus = (newStatus: string) => {
+    selectedProjects.forEach(projectId => {
+      const project = projects.find(p => p.id === projectId);
+      if (project) {
+        handleStatusChange(project, newStatus);
+      }
+    });
+    clearSelection();
+  };
+
+  const bulkDeleteProjects = () => {
+    selectedProjects.forEach(projectId => {
+      const project = projects.find(p => p.id === projectId);
+      if (project) {
+        db.deleteProject(project.id);
+      }
+    });
+    loadProjects();
+    clearSelection();
+    setActiveTab('deleted');
   };
 
   const exportSelectedProjects = () => {
@@ -329,6 +361,18 @@ const ProjectList: React.FC = () => {
           </div>
         </div>
 
+        {/* Status Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {statusCards.map((card, index) => (
+            <StatusCard 
+              key={index}
+              title={card.title} 
+              count={card.count} 
+              color={card.color}
+            />
+          ))}
+        </div>
+
         {/* Tabs */}
         <div className="grid grid-cols-3 bg-gray-100 p-1 rounded-lg">
           <button
@@ -361,18 +405,6 @@ const ProjectList: React.FC = () => {
           >
             Excluídos ({tabCounts.deleted})
           </button>
-        </div>
-
-        {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {statusCards.map((card, index) => (
-            <StatusCard 
-              key={index}
-              title={card.title} 
-              count={card.count} 
-              color={card.color}
-            />
-          ))}
         </div>
 
         {/* Filters - only show for active tab */}
@@ -427,21 +459,53 @@ const ProjectList: React.FC = () => {
 
         {/* Selection controls */}
         {filteredProjects.length > 0 && (
-          <div className="flex items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="select-all"
-                checked={selectedProjects.length === filteredProjects.length}
-                onCheckedChange={handleSelectAll}
-              />
-              <label htmlFor="select-all" className="text-sm font-medium">
-                Selecionar todos ({filteredProjects.length})
-              </label>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="select-all"
+                  checked={selectedProjects.length === filteredProjects.length}
+                  onCheckedChange={handleSelectAll}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium">
+                  Selecionar todos ({filteredProjects.length})
+                </label>
+              </div>
+              {selectedProjects.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  {selectedProjects.length} projeto(s) selecionado(s)
+                </span>
+              )}
             </div>
+            
             {selectedProjects.length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {selectedProjects.length} projeto(s) selecionado(s)
-              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={clearSelection}>
+                  <X className="h-4 w-4 mr-1" />
+                  Cancelar seleção
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Ações em lote
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => bulkChangeStatus('active')}>
+                      Mover para Ativos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => bulkChangeStatus('finished')}>
+                      Mover para Finalizados
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => bulkChangeStatus('deleted')}>
+                      Mover para Excluídos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={bulkDeleteProjects} className="text-red-600">
+                      Excluir permanentemente
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             )}
           </div>
         )}
@@ -478,32 +542,16 @@ const ProjectList: React.FC = () => {
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Dialog>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setEditingProject(project)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-                          <DialogHeader className="px-6 py-4 border-b">
-                            <DialogTitle>Editar Projeto</DialogTitle>
-                          </DialogHeader>
-                          <div className="overflow-hidden">
-                            {editingProject && (
-                              <ProjectForm 
-                                project={editingProject}
-                                onSubmit={() => {
-                                  setEditingProject(null);
-                                  loadProjects();
-                                }}
-                                onCancel={() => setEditingProject(null)}
-                              />
-                            )}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setEditingProject(project);
+                          setIsEditDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       {activeTab === 'active' && (
                         <>
                           <Button 
@@ -588,6 +636,31 @@ const ProjectList: React.FC = () => {
             ))}
           </div>
         )}
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+            <DialogHeader className="px-6 py-4 border-b">
+              <DialogTitle>Editar Projeto</DialogTitle>
+            </DialogHeader>
+            <div className="overflow-hidden">
+              {editingProject && (
+                <ProjectForm 
+                  project={editingProject}
+                  onSubmit={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingProject(null);
+                    loadProjects();
+                  }}
+                  onCancel={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingProject(null);
+                  }}
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

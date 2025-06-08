@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarIcon, Plus, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -110,6 +111,17 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
     }
   };
 
+  const handleTaskStatusChange = (taskId: string, checked: boolean) => {
+    const newStatus = checked ? 'Concluída' : 'Pendente';
+    db.updateTask(taskId, { status: newStatus });
+    loadTasks();
+    
+    // Call the callback to update project progress
+    if (onTaskUpdate) {
+      onTaskUpdate();
+    }
+  };
+
   const handleDueDateSelect = (date: Date | undefined) => {
     setDueDate(date);
     setDueDateOpen(false);
@@ -118,10 +130,10 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Gerenciar Tarefas</h2>
+        <h2 className="text-xl font-semibold">Lista de Tarefas</h2>
         <Button onClick={() => setShowForm(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Adicionar Tarefa
+          Nova tarefa...
         </Button>
       </div>
 
@@ -235,30 +247,36 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
           <p className="text-gray-500 text-sm">Nenhuma tarefa encontrada para este projeto.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-2">
           {tasks.map((task) => (
-            <div key={task.id} className="rounded-md border bg-card text-card-foreground shadow-sm p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-semibold">{task.name}</h3>
-                  <p className="text-sm text-muted-foreground">{task.description}</p>
+            <div key={task.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+              <Checkbox
+                checked={task.status === 'Concluída'}
+                onCheckedChange={(checked) => handleTaskStatusChange(task.id, checked as boolean)}
+                className="flex-shrink-0"
+              />
+              <div className="flex-grow">
+                <div className={`font-medium ${task.status === 'Concluída' ? 'line-through text-gray-500' : ''}`}>
+                  {task.name}
                 </div>
-                <div className="flex space-x-2">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditTask(task)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                {task.description && (
+                  <div className={`text-sm text-gray-600 ${task.status === 'Concluída' ? 'line-through' : ''}`}>
+                    {task.description}
+                  </div>
+                )}
+                <div className="flex gap-4 text-xs text-gray-500 mt-1">
+                  {task.assignedTo && <span>Atribuída a: {task.assignedTo}</span>}
+                  <span>Prioridade: {task.priority}</span>
+                  {task.dueDate && <span>Vencimento: {format(new Date(task.dueDate), "dd/MM/yyyy")}</span>}
                 </div>
               </div>
-              <div className="mt-2 space-y-1">
-                <p className="text-sm"><span className="font-medium">Status:</span> {task.status}</p>
-                <p className="text-sm"><span className="font-medium">Prioridade:</span> {task.priority}</p>
-                <p className="text-sm"><span className="font-medium">Atribuída a:</span> {task.assignedTo}</p>
-                {task.dueDate && (
-                  <p className="text-sm"><span className="font-medium">Data de Vencimento:</span> {format(new Date(task.dueDate), "dd/MM/yyyy")}</p>
-                )}
+              <div className="flex space-x-1 flex-shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => handleEditTask(task)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}
