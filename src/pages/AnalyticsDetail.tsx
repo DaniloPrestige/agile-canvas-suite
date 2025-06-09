@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, TrendingUp, DollarSign, Target, Clock, Activity, BarChart3, FileText, Eye, Settings, Bell } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { db, Project, formatCurrency } from '../lib/database';
+import { db, Project } from '../lib/database';
 
 const AnalyticsDetail: React.FC = () => {
   const { indicator } = useParams<{ indicator: string }>();
@@ -48,6 +49,14 @@ const AnalyticsDetail: React.FC = () => {
     });
   };
 
+  // Função auxiliar para formatação síncrona de moeda
+  const formatCurrencySync = (amount: number, currency: 'BRL' | 'USD' | 'EUR'): string => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  };
+
   const handleExportReport = () => {
     // Implementar exportação específica para este indicador
     const data = JSON.stringify(analytics, null, 2);
@@ -84,8 +93,8 @@ const AnalyticsDetail: React.FC = () => {
           title: 'Receita Total',
           icon: <DollarSign className="h-6 w-6 text-green-600" />,
           description: 'Análise detalhada da receita total dos projetos',
-          value: analytics ? await formatCurrency(analytics.totalRevenue, 'BRL') : 'Carregando...',
-          content: `A receita total atual é de ${analytics ? await formatCurrency(analytics.totalRevenue, 'BRL') : 'carregando'}, baseada em ${projects.length} projetos. Esta análise inclui tendências mensais, comparações com períodos anteriores e projeções futuras.`,
+          value: analytics ? formatCurrencySync(analytics.totalRevenue, 'BRL') : 'Carregando...',
+          content: `A receita total atual é de ${analytics ? formatCurrencySync(analytics.totalRevenue, 'BRL') : 'carregando'}, baseada em ${projects.length} projetos. Esta análise inclui tendências mensais, comparações com períodos anteriores e projeções futuras.`,
           chartData: [
             { month: 'Jan', value: analytics ? analytics.totalRevenue * 0.15 : 0 },
             { month: 'Fev', value: analytics ? analytics.totalRevenue * 0.18 : 0 },
@@ -100,8 +109,8 @@ const AnalyticsDetail: React.FC = () => {
           title: 'Orçamento Total',
           icon: <Target className="h-6 w-6 text-blue-600" />,
           description: 'Análise do orçamento planejado vs executado',
-          value: analytics ? await formatCurrency(analytics.totalBudget, 'BRL') : 'Carregando...',
-          content: `O orçamento total planejado é de ${analytics ? await formatCurrency(analytics.totalBudget, 'BRL') : 'carregando'}. A variação atual é de ${analytics ? analytics.variancePercentage.toFixed(1) : 0}% em relação ao planejado.`,
+          value: analytics ? formatCurrencySync(analytics.totalBudget, 'BRL') : 'Carregando...',
+          content: `O orçamento total planejado é de ${analytics ? formatCurrencySync(analytics.totalBudget, 'BRL') : 'carregando'}. A variação atual é de ${analytics ? analytics.variancePercentage.toFixed(1) : 0}% em relação ao planejado.`,
           chartData: [
             { category: 'Planejado', value: analytics ? analytics.totalBudget : 0 },
             { category: 'Executado', value: analytics ? analytics.totalRevenue : 0 },
@@ -114,7 +123,7 @@ const AnalyticsDetail: React.FC = () => {
           icon: <TrendingUp className="h-6 w-6 text-red-600" />,
           description: 'Análise das variações entre planejado e executado',
           value: analytics ? `${analytics.variancePercentage.toFixed(1)}%` : 'Carregando...',
-          content: `A variação financeira atual é de ${analytics ? analytics.variancePercentage.toFixed(1) : 0}%, representando ${analytics ? await formatCurrency(Math.abs(analytics.budgetVariance), 'BRL') : 'carregando'} ${analytics && analytics.budgetVariance >= 0 ? 'acima' : 'abaixo'} do planejado.`,
+          content: `A variação financeira atual é de ${analytics ? analytics.variancePercentage.toFixed(1) : 0}%, representando ${analytics ? formatCurrencySync(Math.abs(analytics.budgetVariance), 'BRL') : 'carregando'} ${analytics && analytics.budgetVariance >= 0 ? 'acima' : 'abaixo'} do planejado.`,
           chartData: projects.map(p => ({
             name: p.name.substring(0, 15),
             planejado: p.estimatedValue,
@@ -155,8 +164,8 @@ const AnalyticsDetail: React.FC = () => {
           title: 'EBITDA - Análise Detalhada',
           icon: <DollarSign className="h-6 w-6 text-green-600" />,
           description: 'Lucro antes de juros, impostos, depreciação e amortização',
-          value: analytics ? await formatCurrency(analytics.ebitda, 'BRL') : 'Carregando...',
-          content: `O EBITDA atual é de ${analytics ? await formatCurrency(analytics.ebitda, 'BRL') : 'carregando'}, representando ${analytics ? ((analytics.ebitda / analytics.totalRevenue) * 100).toFixed(1) : 0}% da receita total. Esta métrica indica a eficiência operacional da empresa.`,
+          value: analytics ? formatCurrencySync(analytics.ebitda, 'BRL') : 'Carregando...',
+          content: `O EBITDA atual é de ${analytics ? formatCurrencySync(analytics.ebitda, 'BRL') : 'carregando'}, representando ${analytics ? ((analytics.ebitda / analytics.totalRevenue) * 100).toFixed(1) : 0}% da receita total. Esta métrica indica a eficiência operacional da empresa.`,
           chartData: [
             { period: 'Q1', ebitda: analytics ? analytics.ebitda * 0.20 : 0 },
             { period: 'Q2', ebitda: analytics ? analytics.ebitda * 0.25 : 0 },
@@ -181,8 +190,8 @@ const AnalyticsDetail: React.FC = () => {
           title: 'Fluxo de Caixa',
           icon: <TrendingUp className="h-6 w-6 text-red-600" />,
           description: 'Análise do fluxo de caixa operacional',
-          value: analytics ? await formatCurrency(analytics.cashFlow, 'BRL') : 'Carregando...',
-          content: `O fluxo de caixa operacional é de ${analytics ? await formatCurrency(analytics.cashFlow, 'BRL') : 'carregando'}. Este valor representa a capacidade da empresa de gerar dinheiro através de suas operações principais.`,
+          value: analytics ? formatCurrencySync(analytics.cashFlow, 'BRL') : 'Carregando...',
+          content: `O fluxo de caixa operacional é de ${analytics ? formatCurrencySync(analytics.cashFlow, 'BRL') : 'carregando'}. Este valor representa a capacidade da empresa de gerar dinheiro através de suas operações principais.`,
           chartData: [
             { month: 'Jan', entrada: analytics ? analytics.cashFlow * 0.15 : 0, saida: analytics ? analytics.cashFlow * 0.12 : 0 },
             { month: 'Fev', entrada: analytics ? analytics.cashFlow * 0.18 : 0, saida: analytics ? analytics.cashFlow * 0.15 : 0 },
@@ -220,8 +229,8 @@ const AnalyticsDetail: React.FC = () => {
           title: 'NPV - Valor Presente Líquido',
           icon: <TrendingUp className="h-6 w-6 text-indigo-600" />,
           description: 'Valor presente líquido dos projetos',
-          value: analytics ? await formatCurrency(analytics.npv, 'BRL') : 'Carregando...',
-          content: `O NPV total do portfolio é de ${analytics ? await formatCurrency(analytics.npv, 'BRL') : 'carregando'}. Um NPV positivo indica que os projetos geram valor para a empresa.`,
+          value: analytics ? formatCurrencySync(analytics.npv, 'BRL') : 'Carregando...',
+          content: `O NPV total do portfolio é de ${analytics ? formatCurrencySync(analytics.npv, 'BRL') : 'carregando'}. Um NPV positivo indica que os projetos geram valor para a empresa.`,
           chartData: projects.map(p => ({
             project: p.name.substring(0, 10),
             npv: (p.finalValue || p.estimatedValue) * 0.45
@@ -347,7 +356,7 @@ const AnalyticsDetail: React.FC = () => {
                         <p className="text-sm text-gray-600">{project.client}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">{formatCurrency(project.finalValue || project.estimatedValue, project.currency)}</p>
+                        <p className="font-medium">{formatCurrencySync(project.finalValue || project.estimatedValue, project.currency)}</p>
                         <p className="text-sm text-gray-600">{project.status}</p>
                       </div>
                     </div>
@@ -365,7 +374,7 @@ const AnalyticsDetail: React.FC = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Ações Rápidas</CardHeader>
+                <CardTitle>Ações Rápidas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button variant="outline" className="w-full justify-start" onClick={handleExportReport}>
