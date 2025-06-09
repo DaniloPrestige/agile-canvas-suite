@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -26,8 +25,8 @@ const AnalyticsDetail: React.FC = () => {
     const totalRevenue = allProjects.reduce((sum, p) => sum + (p.finalValue || 0), 0);
     const totalBudget = allProjects.reduce((sum, p) => sum + (p.estimatedValue || 0), 0);
     const budgetVariance = totalRevenue - totalBudget;
-    const completedProjects = allProjects.filter(p => p.status === 'Concluído').length;
-    const activeProjects = allProjects.filter(p => p.status !== 'Concluído' && !p.isDeleted).length;
+    const completedProjects = allProjects.filter(p => p.status === 'Concluída').length;
+    const activeProjects = allProjects.filter(p => p.status !== 'Concluída' && !p.isDeleted).length;
     const delayedProjects = allProjects.filter(p => p.status === 'Atrasado').length;
     const onTimeDelivery = activeProjects > 0 ? ((activeProjects - delayedProjects) / activeProjects) * 100 : 100;
     

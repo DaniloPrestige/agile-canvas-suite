@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import StatusCard from '../components/StatusCard';
@@ -30,8 +31,8 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const all = db.getAllProjects();
-    const active = all.filter(p => p.status !== 'Concluído' && !p.isDeleted);
-    const finished = all.filter(p => p.status === 'Concluído' && !p.isDeleted);
+    const active = all.filter(p => p.status !== 'Concluída' && !p.isDeleted);
+    const finished = all.filter(p => p.status === 'Concluída' && !p.isDeleted);
     const deleted = all.filter(p => p.isDeleted);
 
     setActiveProjects(active);
@@ -45,7 +46,7 @@ const Dashboard: React.FC = () => {
     const inProgress = projects.filter(p => p.status === 'Em Progresso').length;
     const pending = projects.filter(p => p.status === 'Pendente').length;
     const delayed = projects.filter(p => p.status === 'Atrasado').length;
-    const completed = projects.filter(p => p.status === 'Concluído').length;
+    const completed = projects.filter(p => p.status === 'Concluída').length;
 
     return { total, inProgress, pending, delayed, completed };
   };
@@ -156,16 +157,13 @@ const Dashboard: React.FC = () => {
         <Tabs defaultValue="active" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Projetos Ativos
+              📈 Projetos Ativos
             </TabsTrigger>
             <TabsTrigger value="finished" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Projetos Finalizados
+              📅 Projetos Finalizados
             </TabsTrigger>
             <TabsTrigger value="deleted" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Projetos Excluídos
+              🗑️ Projetos Excluídos
             </TabsTrigger>
           </TabsList>
 

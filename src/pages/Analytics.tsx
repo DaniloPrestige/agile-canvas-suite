@@ -47,8 +47,8 @@ const Analytics: React.FC = () => {
     const budgetVariance = totalRevenue - totalBudget;
     const variancePercentage = totalBudget > 0 ? (budgetVariance / totalBudget) * 100 : 0;
 
-    const completedProjects = allProjects.filter(p => p.status === 'Concluído').length;
-    const activeProjects = allProjects.filter(p => p.status !== 'Concluído').length;
+    const completedProjects = allProjects.filter(p => p.status === 'Concluída').length;
+    const activeProjects = allProjects.filter(p => p.status !== 'Concluída').length;
     const delayedProjects = allProjects.filter(p => p.status === 'Atrasado').length;
     const onTimeDelivery = activeProjects > 0 ? ((activeProjects - delayedProjects) / activeProjects) * 100 : 100;
 
