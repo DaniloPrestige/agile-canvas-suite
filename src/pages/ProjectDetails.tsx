@@ -168,7 +168,7 @@ const ProjectDetails: React.FC = () => {
 
     // Project Performance Metrics
     const allProjects = db.getAllProjects().filter(p => !p.isDeleted);
-    const activeProjects = allProjects.filter(p => p.status !== 'Concluído');
+    const activeProjects = allProjects.filter(p => p.status !== 'Concluída');
     const onTimeProjects = activeProjects.filter(p => p.status !== 'Atrasado').length;
     const totalActiveProjects = activeProjects.length;
     const onTimeRate = totalActiveProjects > 0 ? Math.round((onTimeProjects / totalActiveProjects) * 100) : 0;
@@ -214,7 +214,7 @@ const ProjectDetails: React.FC = () => {
       currentY += lineHeight + 2;
       
       tasks.slice(0, 6).forEach(task => {
-        const status = task.status === 'Concluída' ? '[X]' : '[ ]';
+        const status = task.status === 'Concluída' ? '[x]' : '[  ]';
         const taskText = `${status} ${task.name}`;
         const taskLines = doc.splitTextToSize(taskText, pageWidth - 2 * margin - 10);
         
@@ -283,8 +283,8 @@ const ProjectDetails: React.FC = () => {
 
   const handleFinishProject = () => {
     if (project) {
-      db.updateProject(project.id, { status: 'Concluído' });
-      setProject({ ...project, status: 'Concluído' });
+      db.updateProject(project.id, { status: 'Concluída' });
+      setProject({ ...project, status: 'Concluída' });
     }
   };
 
@@ -301,7 +301,7 @@ const ProjectDetails: React.FC = () => {
         return 'bg-blue-100 text-blue-800';
       case 'Pendente':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Concluído':
+      case 'Concluída':
         return 'bg-green-100 text-green-800';
       case 'Atrasado':
         return 'bg-red-100 text-red-800';
@@ -360,7 +360,7 @@ const ProjectDetails: React.FC = () => {
               <Edit className="h-4 w-4 mr-2" />
               Editar
             </Button>
-            {project.status !== 'Concluído' && (
+            {project.status !== 'Concluída' && (
               <Button onClick={handleFinishProject} variant="outline">
                 <CheckSquare className="h-4 w-4 mr-2" />
                 Finalizar

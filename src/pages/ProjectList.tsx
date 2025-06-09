@@ -40,9 +40,9 @@ const ProjectList: React.FC = () => {
     let filtered = projects;
 
     if (activeTab === 'active') {
-      filtered = filtered.filter(p => p.status !== 'Concluído' && !p.isDeleted);
+      filtered = filtered.filter(p => p.status !== 'Concluída' && !p.isDeleted);
     } else if (activeTab === 'finished') {
-      filtered = filtered.filter(p => p.status === 'Concluído' && !p.isDeleted);
+      filtered = filtered.filter(p => p.status === 'Concluída' && !p.isDeleted);
     } else if (activeTab === 'deleted') {
       filtered = filtered.filter(p => p.isDeleted);
     }
@@ -67,8 +67,8 @@ const ProjectList: React.FC = () => {
   };
 
   const getTabCounts = () => {
-    const activeProjects = projects.filter(p => p.status !== 'Concluído' && !p.isDeleted);
-    const finishedProjects = projects.filter(p => p.status === 'Concluído' && !p.isDeleted);
+    const activeProjects = projects.filter(p => p.status !== 'Concluída' && !p.isDeleted);
+    const finishedProjects = projects.filter(p => p.status === 'Concluída' && !p.isDeleted);
     const deletedProjects = projects.filter(p => p.isDeleted);
 
     return {
@@ -114,7 +114,7 @@ const ProjectList: React.FC = () => {
         return 'bg-blue-100 text-blue-800';
       case 'Pendente':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Concluído':
+      case 'Concluída':
         return 'bg-green-100 text-green-800';
       case 'Atrasado':
         return 'bg-red-100 text-red-800';
@@ -137,7 +137,7 @@ const ProjectList: React.FC = () => {
   };
 
   const handleFinishProject = (project: Project) => {
-    db.updateProject(project.id, { status: 'Concluído', progress: 100 });
+    db.updateProject(project.id, { status: 'Concluída' });
     loadProjects();
     setActiveTab('finished');
   };
@@ -154,7 +154,7 @@ const ProjectList: React.FC = () => {
       db.updateProject(project.id, { status: 'Em Progresso' });
       setActiveTab('active');
     } else if (newStatus === 'finished') {
-      db.updateProject(project.id, { status: 'Concluído', progress: 100 });
+      db.updateProject(project.id, { status: 'Concluída' });
       setActiveTab('finished');
     } else if (newStatus === 'deleted') {
       db.deleteProject(project.id);
@@ -216,7 +216,7 @@ const ProjectList: React.FC = () => {
     generatePDF(selectedProjectsData);
   };
 
-  const generatePDF = async (projectsToExport: Project[]) => {
+  const generatePDF = (projectsToExport: Project[]) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
@@ -269,8 +269,8 @@ const ProjectList: React.FC = () => {
 
     // Calculate portfolio metrics
     const totalProjects = projectsToExport.length;
-    const completedProjects = projectsToExport.filter(p => p.status === 'Concluído').length;
-    const activeProjects = projectsToExport.filter(p => p.status !== 'Concluído' && !p.isDeleted).length;
+    const completedProjects = projectsToExport.filter(p => p.status === 'Concluída').length;
+    const activeProjects = projectsToExport.filter(p => p.status !== 'Concluída' && !p.isDeleted).length;
     const delayedProjects = projectsToExport.filter(p => p.status === 'Atrasado').length;
     const totalValue = projectsToExport.reduce((sum, p) => sum + (p.finalValue || p.estimatedValue || 0), 0);
     const avgProgress = totalProjects > 0 ? Math.round(projectsToExport.reduce((sum, p) => sum + p.progress, 0) / totalProjects) : 0;
@@ -279,7 +279,7 @@ const ProjectList: React.FC = () => {
     const col2X = pageWidth / 2 + 10;
 
     doc.text(`Total de Projetos: ${totalProjects}`, col1X, currentY);
-    doc.text(`Valor Total do Portfolio: ${await formatCurrency(totalValue, 'BRL')}`, col2X, currentY);
+    doc.text(`Valor Total do Portfolio: ${formatCurrency(totalValue, 'BRL')}`, col2X, currentY);
     currentY += lineHeight;
 
     doc.text(`Projetos Concluidos: ${completedProjects} (${totalProjects > 0 ? Math.round((completedProjects/totalProjects)*100) : 0}%)`, col1X, currentY);
@@ -296,7 +296,7 @@ const ProjectList: React.FC = () => {
     currentY += 15;
 
     // Individual Project Details
-    for (const [index, project] of projectsToExport.entries()) {
+    projectsToExport.forEach((project, index) => {
       // Check if we need a new page
       if (currentY > pageHeight - 80) {
         doc.addPage();
@@ -341,7 +341,7 @@ const ProjectList: React.FC = () => {
       currentY += lineHeight;
 
       doc.text(`Fase: ${project.phase}`, col1X, currentY);
-      doc.text(`Valor: ${await formatCurrency(project.finalValue || project.estimatedValue || 0, project.currency)}`, col2X, currentY);
+      doc.text(`Valor: ${formatCurrency(project.finalValue || project.estimatedValue || 0, project.currency)}`, col2X, currentY);
       currentY += lineHeight;
 
       // Progress Bar Visualization
@@ -425,90 +425,9 @@ const ProjectList: React.FC = () => {
       }
 
       currentY += 10; // Space between projects
-    }
+    });
 
-    // Performance Analysis Page (if more than 3 projects)
-    if (projectsToExport.length > 3) {
-      doc.addPage();
-      pageNumber++;
-      currentY = 20;
-
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('ANALISE DE PERFORMANCE DO PORTFOLIO', margin, currentY);
-      currentY += 15;
-
-      // Portfolio Performance Metrics
-      doc.setFillColor(248, 250, 252);
-      doc.rect(margin, currentY, pageWidth - 2 * margin, 60, 'F');
-      doc.setDrawColor(30, 58, 138);
-      doc.setLineWidth(0.5);
-      doc.rect(margin, currentY, pageWidth - 2 * margin, 60);
-
-      currentY += 10;
-      doc.setFontSize(12);
-      doc.text('METRICAS DO PORTFOLIO', margin + 10, currentY);
-      currentY += 10;
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-
-      const highPriorityProjects = projectsToExport.filter(p => p.priority === 'Alta').length;
-      const avgProjectDuration = projectsToExport.reduce((sum, p) => {
-        if (p.startDate && p.endDate) {
-          const days = Math.floor((new Date(p.endDate).getTime() - new Date(p.startDate).getTime()) / (1000 * 60 * 60 * 24));
-          return sum + days;
-        }
-        return sum;
-      }, 0) / projectsToExport.filter(p => p.startDate && p.endDate).length || 0;
-
-      doc.text(`Projetos de Alta Prioridade: ${highPriorityProjects} (${Math.round((highPriorityProjects/totalProjects)*100)}%)`, margin + 15, currentY);
-      currentY += lineHeight;
-      doc.text(`Duracao Media dos Projetos: ${Math.round(avgProjectDuration)} dias`, margin + 15, currentY);
-      currentY += lineHeight;
-      doc.text(`Valor Medio por Projeto: ${await formatCurrency(totalValue/totalProjects, 'BRL')}`, margin + 15, currentY);
-      currentY += lineHeight;
-
-      // Status Distribution
-      const statusDistribution = {
-        'Em Progresso': projectsToExport.filter(p => p.status === 'Em Progresso').length,
-        'Pendente': projectsToExport.filter(p => p.status === 'Pendente').length,
-        'Concluído': projectsToExport.filter(p => p.status === 'Concluído').length,
-        'Atrasado': projectsToExport.filter(p => p.status === 'Atrasado').length
-      };
-
-      currentY += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.text('DISTRIBUICAO POR STATUS:', margin + 15, currentY);
-      currentY += lineHeight;
-
-      doc.setFont('helvetica', 'normal');
-      Object.entries(statusDistribution).forEach(([status, count]) => {
-        if (count > 0) {
-          const percentage = Math.round((count/totalProjects)*100);
-          doc.text(`${status}: ${count} projetos (${percentage}%)`, margin + 20, currentY);
-          currentY += lineHeight;
-        }
-      });
-    }
-
-    // Professional Footer (sem data)
-    const footerY = pageHeight - 20;
-    doc.setFillColor(248, 250, 252);
-    doc.rect(0, footerY - 5, pageWidth, 25, 'F');
-    
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(107, 114, 128);
-    doc.text('Relatorio gerado automaticamente pelo Sistema de Gerenciamento de Projetos - Prestige Cosmeticos', margin, footerY);
-    doc.text('Este documento contem informacoes confidenciais e e destinado exclusivamente a diretoria da empresa.', margin, footerY + 5);
-    doc.text(`Pagina ${pageNumber} | Gerado por: Danilo Araujo`, margin, footerY + 10);
-
-    const fileName = projectsToExport.length === 1 
-      ? `relatorio-${projectsToExport[0].name.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`
-      : `relatorio-portfolio-${projectsToExport.length}-projetos.pdf`;
-    
-    doc.save(fileName);
+    doc.save(`relatorio-projetos-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const tabCounts = getTabCounts();
@@ -522,478 +441,307 @@ const ProjectList: React.FC = () => {
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-muted-foreground">🚀 Gerencie todos os seus projetos em um só lugar</p>
+              <h1 className="text-3xl font-bold text-foreground">📋 Projetos</h1>
+              <p className="text-muted-foreground mt-1">Gerencie seus projetos</p>
             </div>
-            <div className="flex gap-2">
-              {selectedProjects.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button onClick={exportSelectedProjects} variant="outline" className="hover:bg-gray-50">
-                      <Download className="h-4 w-4 mr-2" />
-                      📄 Exportar ({selectedProjects.length})
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>📊 Gerar relatório executivo em PDF dos projetos selecionados</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button onClick={() => setIsCreateDialogOpen(true)} variant="outline" className="bg-white text-gray-900 border-gray-300 hover:bg-gray-50">
-                      <Plus className="h-4 w-4 mr-2" />
-                      ➕ Novo Projeto
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>✨ Criar um novo projeto no sistema</p>
-                  </TooltipContent>
-                </Tooltip>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-                  <DialogHeader className="px-6 py-4 border-b">
-                    <DialogTitle className="flex items-center gap-2">
-                      <Plus className="w-5 h-5" />
-                      ➕ Adicionar Novo Projeto
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="overflow-hidden">
-                    <ProjectForm 
-                      onSubmit={() => {
-                        setIsCreateDialogOpen(false);
-                        loadProjects();
-                      }}
-                      onCancel={() => setIsCreateDialogOpen(false)}
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={() => setIsCreateDialogOpen(true)} 
+                  className="bg-white text-foreground border border-border hover:bg-accent"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Projeto
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Criar um novo projeto</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Status Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {statusCards.map((card, index) => (
-              <StatusCard 
-                key={index}
-                title={card.title} 
-                count={card.count} 
-                color={card.color}
-              />
+              <StatusCard key={index} {...card} />
             ))}
           </div>
 
-          {/* Tabs - Removendo ícones simples, mantendo emojis */}
-          <div className="grid grid-cols-3 bg-gray-100 p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab('active')}
-              className={`px-6 py-3 rounded-md font-medium text-sm transition-colors flex items-center justify-center gap-2 hover:bg-gray-50 ${
-                activeTab === 'active'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              📂 Ativos ({tabCounts.active})
-            </button>
-            <button
-              onClick={() => setActiveTab('finished')}
-              className={`px-6 py-3 rounded-md font-medium text-sm transition-colors flex items-center justify-center gap-2 hover:bg-gray-50 ${
-                activeTab === 'finished'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              ✅ Finalizados ({tabCounts.finished})
-            </button>
-            <button
-              onClick={() => setActiveTab('deleted')}
-              className={`px-6 py-3 rounded-md font-medium text-sm transition-colors flex items-center justify-center gap-2 hover:bg-gray-50 ${
-                activeTab === 'deleted'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              🗑️ Excluídos ({tabCounts.deleted})
-            </button>
-          </div>
-
+          {/* Filter Section */}
           {activeTab === 'active' && (
-            <div className="flex gap-4 items-center">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="🔍 Buscar por nome, cliente ou responsável..."
+                  placeholder="Buscar projetos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 hover:border-blue-300 focus:border-blue-500"
+                  className="pl-10"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-gray-500" />
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="min-w-[150px] hover:border-blue-300">
-                    <SelectValue placeholder="Todos os status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">📊 Todos</SelectItem>
-                    <SelectItem value="Pendente">⏳ Pendente</SelectItem>
-                    <SelectItem value="Em Progresso">🔄 Em Progresso</SelectItem>
-                    <SelectItem value="Atrasado">⚠️ Atrasado</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger className="min-w-[150px] hover:border-blue-300">
-                    <SelectValue placeholder="Todas as prioridades" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">🎯 Todas</SelectItem>
-                    <SelectItem value="Alta">🔴 Alta</SelectItem>
-                    <SelectItem value="Média">🟡 Média</SelectItem>
-                    <SelectItem value="Baixa">🟢 Baixa</SelectItem>
-                  </SelectContent>
-                </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Status</SelectItem>
+                  <SelectItem value="Pendente">Pendente</SelectItem>
+                  <SelectItem value="Em Progresso">Em Progresso</SelectItem>
+                  <SelectItem value="Atrasado">Atrasado</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <Flag className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Prioridade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Prioridades</SelectItem>
+                  <SelectItem value="Alta">Alta</SelectItem>
+                  <SelectItem value="Média">Média</SelectItem>
+                  <SelectItem value="Baixa">Baixa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div className="border-b">
+            <div className="flex space-x-8">
+              <button
+                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === 'active' 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setActiveTab('active')}
+              >
+                <Clock className="w-4 h-4" />
+                📊 Ativos ({tabCounts.active})
+              </button>
+              <button
+                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === 'finished' 
+                    ? 'border-green-500 text-green-600' 
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setActiveTab('finished')}
+              >
+                <CheckSquare className="w-4 h-4" />
+                ✅ Finalizados ({tabCounts.finished})
+              </button>
+              <button
+                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === 'deleted' 
+                    ? 'border-red-500 text-red-600' 
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setActiveTab('deleted')}
+              >
+                <Trash2 className="w-4 h-4" />
+                🗑️ Lixeira ({tabCounts.deleted})
+              </button>
+            </div>
+          </div>
+
+          {/* Bulk Actions */}
+          {selectedProjects.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-900">
+                  {selectedProjects.length} projeto(s) selecionado(s)
+                </span>
+                <div className="flex space-x-2">
+                  <Button size="sm" variant="outline" onClick={exportSelectedProjects}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar
+                  </Button>
+                  {activeTab === 'active' && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          Alterar Status
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => bulkChangeStatus('finished')}>
+                          Marcar como Finalizado
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => bulkChangeStatus('deleted')}>
+                          Mover para Lixeira
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  {activeTab === 'deleted' && (
+                    <Button size="sm" variant="outline" onClick={() => bulkChangeStatus('active')}>
+                      Restaurar
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={clearSelection}>
+                    <X className="h-4 w-4 mr-2" />
+                    Limpar
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
-          {activeTab !== 'active' && (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="🔍 Buscar projetos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 hover:border-blue-300 focus:border-blue-500"
-              />
-            </div>
-          )}
-
-          {filteredProjects.length > 0 && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="select-all"
-                    checked={selectedProjects.length === filteredProjects.length}
-                    onCheckedChange={handleSelectAll}
-                  />
-                  <label htmlFor="select-all" className="text-sm font-medium">
-                    ☑️ Selecionar todos ({filteredProjects.length})
-                  </label>
-                </div>
-                {selectedProjects.length > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    📌 {selectedProjects.length} projeto(s) selecionado(s)
-                  </span>
-                )}
-              </div>
-              
-              {selectedProjects.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={clearSelection} className="hover:bg-gray-50">
-                        <X className="h-4 w-4 mr-1" />
-                        ❌ Cancelar
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Limpar seleção atual</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="sm" className="hover:bg-blue-50">
-                            ⚡ Ações em lote
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Aplicar ações em todos os projetos selecionados</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => bulkChangeStatus('active')}>
-                        📂 Mover para Ativos
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => bulkChangeStatus('finished')}>
-                        ✅ Mover para Finalizados
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => bulkChangeStatus('deleted')}>
-                        🗑️ Mover para Excluídos
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={bulkDeleteProjects} className="text-red-600">
-                        ⚠️ Excluir permanentemente
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Projects Grid */}
-          {filteredProjects.length === 0 ? (
-            <div className="text-center py-12">
-              <FolderOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">🔍 Nenhum projeto encontrado</p>
-              <p className="text-gray-400 text-sm mt-2">
-                {projects.length === 0 
-                  ? "🚀 Comece criando seu primeiro projeto!" 
-                  : "🔎 Tente ajustar os filtros de busca"}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects.map((project) => (
-                <div key={project.id} className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-start gap-3 flex-1">
-                        <Checkbox
-                          checked={selectedProjects.includes(project.id)}
-                          onCheckedChange={(checked) => handleSelectProject(project.id, checked as boolean)}
-                        />
-                        <div className="flex-1">
-                          <Link 
-                            to={`/project/${project.id}`}
-                            className="hover:text-blue-600 transition-colors"
-                          >
-                            <h3 className="font-semibold text-lg text-gray-900 mb-1 hover:text-blue-600 cursor-pointer">
-                              📋 {project.name}
-                            </h3>
+          {/* Project List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map((project) => (
+                <div key={project.id} className="bg-card border rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedProjects.includes(project.id)}
+                        onCheckedChange={(checked) => handleSelectProject(project.id, checked as boolean)}
+                      />
+                      <h3 className="font-semibold text-lg text-foreground line-clamp-1">{project.name}</h3>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link to={`/project/${project.id}`} className="flex items-center">
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver Detalhes
                           </Link>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Users className="w-3 h-3" />
-                            {project.client}
-                          </div>
-                        </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEditingProject(project)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        {activeTab === 'active' && project.status !== 'Concluída' && (
+                          <DropdownMenuItem onClick={() => handleFinishProject(project)}>
+                            <CheckSquare className="h-4 w-4 mr-2" />
+                            Finalizar
+                          </DropdownMenuItem>
+                        )}
+                        {activeTab !== 'deleted' && (
+                          <DropdownMenuItem onClick={() => handleDeleteProject(project)} className="text-destructive">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        )}
+                        {activeTab === 'deleted' && (
+                          <DropdownMenuItem onClick={() => handleStatusChange(project, 'active')}>
+                            Restaurar
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Users className="h-4 w-4 mr-2" />
+                      <span>{project.client}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Badge className={getStatusColor(project.status)}>
+                        {project.status}
+                      </Badge>
+                      <span className={`text-sm font-medium ${getPriorityColor(project.priority)}`}>
+                        {project.priority}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>Progresso</span>
+                        <span>{project.progress}%</span>
                       </div>
-                      <div className="flex space-x-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Link to={`/project/${project.id}`}>
-                              <Button variant="ghost" size="sm" className="hover:bg-blue-50">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>👁️ Visualizar detalhes do projeto</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setEditingProject(project);
-                                setIsEditDialogOpen(true);
-                              }}
-                              className="hover:bg-yellow-50"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>✏️ Editar informações do projeto</p>
-                          </TooltipContent>
-                        </Tooltip>
-
-                        {activeTab === 'active' && (
-                          <>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="hover:bg-green-50">
-                                      <CheckSquare className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>✅ Marcar projeto como concluído</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="flex items-center gap-2">
-                                    <CheckSquare className="h-5 w-5 text-green-600" />
-                                    ✅ Finalizar Projeto
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    🎯 Tem certeza que deseja marcar o projeto "<strong>{project.name}</strong>" como concluído? 
-                                    Esta ação irá alterar o status do projeto para "Concluído" e movê-lo para a aba de projetos finalizados.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>❌ Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleFinishProject(project)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    ✅ Sim, finalizar projeto
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="hover:bg-red-50">
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>🗑️ Excluir projeto</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="flex items-center gap-2">
-                                    <Trash2 className="h-5 w-5 text-red-600" />
-                                    🗑️ Excluir Projeto
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    ⚠️ <strong>Atenção!</strong> Esta ação moverá o projeto "<strong>{project.name}</strong>" para a lixeira. 
-                                    O projeto poderá ser restaurado posteriormente a partir da aba "Excluídos".
-                                    <br/><br/>
-                                    📝 Todas as tarefas, comentários e arquivos do projeto serão preservados.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>❌ Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleDeleteProject(project)}
-                                    className="bg-red-600 hover:bg-red-700"
-                                  >
-                                    🗑️ Sim, excluir projeto
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </>
-                        )}
-                        
-                        {(activeTab === 'finished' || activeTab === 'deleted') && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="hover:bg-gray-50">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>⚡ Mais opções para este projeto</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => handleStatusChange(project, 'active')}>
-                                📂 Mover para Ativos
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleStatusChange(project, 'finished')}>
-                                ✅ Mover para Finalizados
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleStatusChange(project, 'deleted')}>
-                                🗑️ Mover para Excluídos
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${project.progress}%` }}
+                        ></div>
                       </div>
                     </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Users className="w-3 h-3" />
-                          👨‍💼 Responsável:
-                        </div>
-                        <span className="text-sm font-medium">{project.responsible}</span>
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Flag className="w-3 h-3" />
-                          🚩 Prioridade:
-                        </div>
-                        <span className={`text-sm font-medium ${getPriorityColor(project.priority)}`}>
-                          {project.priority}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Clock className="w-3 h-3" />
-                          ⏱️ Status:
-                        </div>
-                        <Badge className={getStatusColor(project.status)}>
-                          {project.status}
-                        </Badge>
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">🎯 Fase:</span>
-                        <span className="text-sm font-medium">{project.phase}</span>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-600">📈 Progresso:</span>
-                          <span className="text-sm font-medium">{project.progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${project.progress}%` }}
-                          ></div>
-                        </div>
-                      </div>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      <strong>Valor:</strong> {formatCurrency(project.finalValue || project.estimatedValue, project.currency)}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Edit Dialog */}
-          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-              <DialogHeader className="px-6 py-4 border-b">
-                <DialogTitle className="flex items-center gap-2">
-                  <Edit className="w-5 h-5" />
-                  ✏️ Editar Projeto
-                </DialogTitle>
-              </DialogHeader>
-              <div className="overflow-hidden">
-                {editingProject && (
-                  <ProjectForm 
-                    initialData={editingProject}
-                    onSubmit={() => {
-                      setIsEditDialogOpen(false);
-                      setEditingProject(null);
-                      loadProjects();
-                    }}
-                    onCancel={() => {
-                      setIsEditDialogOpen(false);
-                      setEditingProject(null);
-                    }}
-                    isEditing={true}
-                  />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-2 text-sm font-semibold text-foreground">Nenhum projeto encontrado</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {activeTab === 'active' && 'Comece criando um novo projeto.'}
+                  {activeTab === 'finished' && 'Nenhum projeto foi finalizado ainda.'}
+                  {activeTab === 'deleted' && 'A lixeira está vazia.'}
+                </p>
+                {activeTab === 'active' && (
+                  <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Primeiro Projeto
+                  </Button>
                 )}
               </div>
-            </DialogContent>
-          </Dialog>
+            )}
+          </div>
+
+          {/* Bulk select all */}
+          {filteredProjects.length > 0 && (
+            <div className="flex items-center space-x-2 pt-4 border-t">
+              <Checkbox
+                checked={selectedProjects.length === filteredProjects.length}
+                onCheckedChange={handleSelectAll}
+              />
+              <span className="text-sm text-muted-foreground">
+                Selecionar todos ({filteredProjects.length})
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Create Project Dialog */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>Criar Novo Projeto</DialogTitle>
+            </DialogHeader>
+            <ProjectForm 
+              onSubmit={() => {
+                loadProjects();
+                setIsCreateDialogOpen(false);
+              }}
+              onCancel={() => setIsCreateDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Project Dialog */}
+        <Dialog open={!!editingProject} onOpenChange={() => setEditingProject(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>Editar Projeto</DialogTitle>
+            </DialogHeader>
+            {editingProject && (
+              <ProjectForm 
+                initialData={editingProject}
+                onSubmit={() => {
+                  loadProjects();
+                  setEditingProject(null);
+                }}
+                onCancel={() => setEditingProject(null)}
+                isEditing={true}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </Layout>
     </TooltipProvider>
   );

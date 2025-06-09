@@ -117,7 +117,7 @@ class DatabaseService {
       if (project) {
         this.updateProject(projectId, { 
           progress,
-          isFinished: progress === 100 || project.status === 'Concluído'
+          isFinished: progress === 100 || project.status === 'Concluída'
         });
         
         // Adiciona entrada no histórico
@@ -136,7 +136,7 @@ class DatabaseService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       isDeleted: false,
-      isFinished: projectData.status === 'Concluído',
+      isFinished: projectData.status === 'Concluída',
     };
     this.db.projects.push(newProject);
     this.saveDatabase();
@@ -152,11 +152,11 @@ class DatabaseService {
   }
 
   getActiveProjects(): Project[] {
-    return this.db.projects.filter(p => p.status !== 'Concluído' && !p.isDeleted);
+    return this.db.projects.filter(p => p.status !== 'Concluída' && !p.isDeleted);
   }
 
   getFinishedProjects(): Project[] {
-    return this.db.projects.filter(p => p.status === 'Concluído' && !p.isDeleted);
+    return this.db.projects.filter(p => p.status === 'Concluída' && !p.isDeleted);
   }
 
   getDeletedProjects(): Project[] {
@@ -172,7 +172,7 @@ class DatabaseService {
       ...this.db.projects[projectIndex],
       ...updates,
       updatedAt: new Date().toISOString(),
-      isFinished: updates.status === 'Concluído' || this.db.projects[projectIndex].status === 'Concluído',
+      isFinished: updates.status === 'Concluída' || this.db.projects[projectIndex].status === 'Concluída',
     };
     this.db.projects[projectIndex] = updatedProject;
     this.saveDatabase();
@@ -344,8 +344,11 @@ class DatabaseService {
 export const db = new DatabaseService();
 
 // Export utility functions
-export const formatCurrency = async (amount: number, currency: 'BRL' | 'USD' | 'EUR'): Promise<string> => {
-  return await db.formatCurrency(amount, currency);
+export const formatCurrency = (amount: number, currency: 'BRL' | 'USD' | 'EUR'): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: currency,
+  }).format(amount);
 };
 
 export const convertCurrency = async (amount: number, fromCurrency: 'BRL' | 'USD' | 'EUR', toCurrency: 'BRL' | 'USD' | 'EUR'): Promise<number> => {
