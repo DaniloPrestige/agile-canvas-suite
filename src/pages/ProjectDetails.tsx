@@ -61,6 +61,10 @@ const ProjectDetails: React.FC = () => {
     setIsEditDialogOpen(false);
   };
 
+  const handleCancelEdit = () => {
+    setIsEditDialogOpen(false);
+  };
+
   const generateProjectPDF = () => {
     if (!project) return;
 
@@ -522,6 +526,7 @@ const ProjectDetails: React.FC = () => {
               <ProjectForm 
                 initialData={project}
                 onSubmit={handleProjectUpdate}
+                onCancel={handleCancelEdit}
                 isEditing={true}
               />
             )}

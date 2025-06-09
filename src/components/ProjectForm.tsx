@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,31 +14,32 @@ import { db, Project } from '../lib/database';
 import TagInput from './TagInput';
 
 interface ProjectFormProps {
-  project?: Project;
+  initialData?: Project;
   onSubmit: () => void;
   onCancel: () => void;
+  isEditing?: boolean;
 }
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit, onCancel, isEditing = false }) => {
   const [formData, setFormData] = useState({
-    name: project?.name || '',
-    client: project?.client || '',
-    responsible: project?.responsible || '',
-    priority: project?.priority || 'Média' as const,
-    status: project?.status || 'Pendente' as const,
-    phase: project?.phase || 'Iniciação' as const,
-    estimatedValue: project?.estimatedValue?.toString() || '',
-    finalValue: project?.finalValue?.toString() || '',
-    currency: project?.currency || 'BRL' as const,
-    description: project?.description || '',
-    tags: project?.tags || [] as string[],
+    name: initialData?.name || '',
+    client: initialData?.client || '',
+    responsible: initialData?.responsible || '',
+    priority: initialData?.priority || 'Média' as const,
+    status: initialData?.status || 'Pendente' as const,
+    phase: initialData?.phase || 'Iniciação' as const,
+    estimatedValue: initialData?.estimatedValue?.toString() || '',
+    finalValue: initialData?.finalValue?.toString() || '',
+    currency: initialData?.currency || 'BRL' as const,
+    description: initialData?.description || '',
+    tags: initialData?.tags || [] as string[],
   });
 
   const [startDate, setStartDate] = useState<Date | undefined>(
-    project?.startDate ? new Date(project.startDate) : undefined
+    initialData?.startDate ? new Date(initialData.startDate) : undefined
   );
   const [endDate, setEndDate] = useState<Date | undefined>(
-    project?.endDate ? new Date(project.endDate) : undefined
+    initialData?.endDate ? new Date(initialData.endDate) : undefined
   );
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
@@ -76,11 +78,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
       endDate: endDate ? endDate.toISOString().split('T')[0] : '',
       estimatedValue: parseFloat(formData.estimatedValue.replace(',', '.')) || 0,
       finalValue: parseFloat(formData.finalValue.replace(',', '.')) || 0,
-      progress: project?.progress || 0,
+      progress: initialData?.progress || 0,
     };
 
-    if (project) {
-      db.updateProject(project.id, projectData);
+    if (initialData) {
+      db.updateProject(initialData.id, projectData);
     } else {
       db.createProject(projectData);
     }
@@ -299,7 +301,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project, onSubmit, onCancel }
             Cancelar
           </Button>
           <Button onClick={handleSubmit} className="h-8 text-sm">
-            {project ? 'Atualizar' : 'Criar'} Projeto
+            {isEditing ? 'Atualizar' : 'Criar'} Projeto
           </Button>
         </div>
       </div>

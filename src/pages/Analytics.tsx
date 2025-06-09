@@ -43,7 +43,8 @@ import {
   Briefcase,
   Shield,
   Star,
-  TrendingUpIcon
+  TrendingUpIcon,
+  Flag
 } from 'lucide-react';
 import { db, Project, formatCurrency } from '../lib/database';
 
