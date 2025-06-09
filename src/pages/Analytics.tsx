@@ -1,863 +1,459 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import StatusCard from '../components/StatusCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  LineChart, 
-  Line, 
-  AreaChart,
-  Area,
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell 
-} from 'recharts';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Calendar, 
-  DollarSign, 
-  Clock, 
-  Target,
-  AlertTriangle,
-  CheckCircle,
-  Activity,
-  BarChart3,
-  Users,
-  Zap,
-  Timer,
-  Award,
-  Gauge,
-  Percent,
-  FileText,
-  MessageSquare,
-  ListTodo,
-  Briefcase,
-  Shield,
-  Star,
-  TrendingUpIcon,
-  Flag
-} from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { db, Project, formatCurrency } from '../lib/database';
+import { TrendingUp, TrendingDown, DollarSign, Target, Clock, Users, BarChart3, PieChartIcon, Activity, AlertCircle } from 'lucide-react';
+
+interface Analytics {
+  totalRevenue: number;
+  totalBudget: number;
+  budgetVariance: number;
+  variancePercentage: number;
+  ebitda: number;
+  liquidMargin: number;
+  cashFlow: number;
+  averageROI: number;
+  paybackMonths: number;
+  npv: number;
+  completedProjects: number;
+  activeProjects: number;
+  delayedProjects: number;
+  onTimeDelivery: number;
+}
 
 const Analytics: React.FC = () => {
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [timeRange, setTimeRange] = useState('6months');
+  const [currency, setCurrency] = useState('BRL');
   const [projects, setProjects] = useState<Project[]>([]);
-  const [timeFilter, setTimeFilter] = useState('6');
-  const [currencyFilter, setCurrencyFilter] = useState('BRL');
 
   useEffect(() => {
-    const allProjects = db.getAllProjects();
+    loadAnalytics();
+  }, [timeRange, currency]);
+
+  const loadAnalytics = () => {
+    const allProjects = db.getAllProjects().filter(p => !p.isDeleted);
     setProjects(allProjects);
-  }, []);
 
-  const getActiveProjects = () => projects.filter(p => p.status !== 'Concluído' && !p.isDeleted);
-  const getFinishedProjects = () => projects.filter(p => p.status === 'Concluído' && !p.isDeleted);
-  const getDeletedProjects = () => projects.filter(p => p.isDeleted);
+    const totalRevenue = allProjects.reduce((sum, p) => sum + (p.finalValue || 0), 0);
+    const totalBudget = allProjects.reduce((sum, p) => sum + (p.estimatedValue || 0), 0);
+    const budgetVariance = totalRevenue - totalBudget;
+    const variancePercentage = totalBudget > 0 ? (budgetVariance / totalBudget) * 100 : 0;
 
-  const getProgressStats = () => {
-    const activeProjects = getActiveProjects();
-    const averageProgress = activeProjects.length > 0 
-      ? Math.round(activeProjects.reduce((sum, p) => sum + p.progress, 0) / activeProjects.length)
-      : 0;
-    
-    const onTimeProjects = activeProjects.filter(p => p.status !== 'Atrasado').length;
-    const delayedProjects = activeProjects.filter(p => p.status === 'Atrasado').length;
-    
-    return { averageProgress, onTimeProjects, delayedProjects };
+    const completedProjects = allProjects.filter(p => p.status === 'Concluído').length;
+    const activeProjects = allProjects.filter(p => p.status !== 'Concluído').length;
+    const delayedProjects = allProjects.filter(p => p.status === 'Atrasado').length;
+    const onTimeDelivery = activeProjects > 0 ? ((activeProjects - delayedProjects) / activeProjects) * 100 : 100;
+
+    // Simplified financial calculations for demonstration
+    const ebitda = totalRevenue * 0.28;
+    const liquidMargin = 15;
+    const cashFlow = totalRevenue * 0.25;
+    const averageROI = 24;
+    const paybackMonths = 18;
+    const npv = totalRevenue * 0.45;
+
+    setAnalytics({
+      totalRevenue,
+      totalBudget,
+      budgetVariance,
+      variancePercentage,
+      ebitda,
+      liquidMargin,
+      cashFlow,
+      averageROI,
+      paybackMonths,
+      npv,
+      completedProjects,
+      activeProjects,
+      delayedProjects,
+      onTimeDelivery
+    });
   };
 
-  const getFinancialStats = () => {
-    const allNonDeleted = projects.filter(p => !p.isDeleted);
-    const totalEstimated = allNonDeleted.reduce((sum, p) => sum + p.estimatedValue, 0);
-    const totalFinal = allNonDeleted.reduce((sum, p) => sum + p.finalValue, 0);
-    const variance = totalFinal - totalEstimated;
-    const variancePercentage = totalEstimated > 0 ? (variance / totalEstimated) * 100 : 0;
-    
-    return { totalEstimated, totalFinal, variance, variancePercentage };
+  const getVarianceColor = (value: number) => {
+    if (value > 0) return 'text-green-600';
+    if (value < 0) return 'text-red-600';
+    return 'text-gray-600';
   };
 
-  const getAdvancedMetrics = () => {
-    const allProjects = projects.filter(p => !p.isDeleted);
-    const activeProjects = getActiveProjects();
-    const finishedProjects = getFinishedProjects();
-    
-    // Client satisfaction simulation
-    const clientSatisfaction = 87;
-    
-    // Resource utilization
-    const resourceUtilization = 78;
-    
-    // Budget adherence
-    const budgetAdherence = allProjects.length > 0 ? 
-      Math.round((allProjects.filter(p => p.finalValue <= p.estimatedValue).length / allProjects.length) * 100) : 0;
-    
-    // Quality index
-    const qualityIndex = 85;
-    
-    // Team efficiency
-    const teamEfficiency = activeProjects.length > 0 ? 
-      Math.round(activeProjects.reduce((sum, p) => sum + p.progress, 0) / activeProjects.length) : 0;
-    
-    // Risk factor
-    const riskFactor = activeProjects.filter(p => p.priority === 'Alta' && p.progress < 50).length;
-    
-    // Productivity metrics
-    const avgCompletionTime = finishedProjects.length > 0 ? 45 : 0;
-    const completedThisMonth = finishedProjects.length;
-    const totalProjects = activeProjects.length + finishedProjects.length;
-    const completionRate = totalProjects > 0 ? (finishedProjects.length / totalProjects) * 100 : 0;
-    
-    return {
-      clientSatisfaction,
-      resourceUtilization,
-      budgetAdherence,
-      qualityIndex,
-      teamEfficiency,
-      riskFactor,
-      avgCompletionTime,
-      completedThisMonth,
-      completionRate
-    };
+  const formatValue = (value: number, type: 'currency' | 'percentage' | 'number' = 'currency') => {
+    if (type === 'currency') {
+      return formatCurrency(value, currency);
+    }
+    if (type === 'percentage') {
+      return `${value.toFixed(1)}%`;
+    }
+    return value.toString();
   };
 
-  const getTimelineData = () => {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const currentMonth = new Date().getMonth();
-    
-    return months.slice(Math.max(0, currentMonth - 5), currentMonth + 1).map((month, index) => ({
-      name: month,
-      projetos: Math.floor(Math.random() * 8) + 2,
-      concluidos: Math.floor(Math.random() * 5) + 1,
-      receita: Math.floor(Math.random() * 80000) + 30000,
-      eficiencia: Math.floor(Math.random() * 20) + 75,
-      satisfacao: Math.floor(Math.random() * 15) + 82,
-      qualidade: Math.floor(Math.random() * 10) + 85,
-      produtividade: Math.floor(Math.random() * 25) + 70
-    }));
-  };
+  if (!analytics) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">📊 Carregando analytics...</p>
+        </div>
+      </Layout>
+    );
+  }
 
-  const getProgressDistribution = () => {
-    const activeProjects = getActiveProjects();
-    const ranges = [
-      { name: '0-25%', min: 0, max: 25, color: '#ef4444' },
-      { name: '26-50%', min: 26, max: 50, color: '#f59e0b' },
-      { name: '51-75%', min: 51, max: 75, color: '#3b82f6' },
-      { name: '76-100%', min: 76, max: 100, color: '#10b981' }
-    ];
-    
-    return ranges.map(range => ({
-      name: range.name,
-      value: activeProjects.filter(p => p.progress >= range.min && p.progress <= range.max).length,
-      color: range.color
-    })).filter(item => item.value > 0);
-  };
+  const pieData = [
+    { name: 'Concluídos', value: analytics.completedProjects, color: '#10b981' },
+    { name: 'Ativos', value: analytics.activeProjects, color: '#3b82f6' },
+    { name: 'Atrasados', value: analytics.delayedProjects, color: '#ef4444' }
+  ];
 
-  const getPriorityData = () => {
-    const activeProjects = getActiveProjects();
-    return [
-      { name: 'Alta', value: activeProjects.filter(p => p.priority === 'Alta').length, color: '#ef4444' },
-      { name: 'Média', value: activeProjects.filter(p => p.priority === 'Média').length, color: '#f59e0b' },
-      { name: 'Baixa', value: activeProjects.filter(p => p.priority === 'Baixa').length, color: '#10b981' }
-    ].filter(item => item.value > 0);
-  };
-
-  const getPhaseData = () => {
-    const activeProjects = getActiveProjects();
-    const phases = ['Iniciação', 'Planejamento', 'Execução', 'Monitoramento', 'Encerramento'];
-    return phases.map(phase => ({
-      name: phase,
-      count: activeProjects.filter(p => p.phase === phase).length
-    }));
-  };
-
-  const progressStats = getProgressStats();
-  const financialStats = getFinancialStats();
-  const advancedMetrics = getAdvancedMetrics();
-  const timelineData = getTimelineData();
-
-  const renderCustomLabel = ({ name, percent }: any) => {
-    if (percent < 0.05) return '';
-    return `${name} ${(percent * 100).toFixed(0)}%`;
-  };
+  const revenueData = [
+    { month: 'Jan', revenue: analytics.totalRevenue * 0.15, profit: analytics.totalRevenue * 0.12 },
+    { month: 'Fev', revenue: analytics.totalRevenue * 0.18, profit: analytics.totalRevenue * 0.14 },
+    { month: 'Mar', revenue: analytics.totalRevenue * 0.22, profit: analytics.totalRevenue * 0.18 },
+    { month: 'Abr', revenue: analytics.totalRevenue * 0.20, profit: analytics.totalRevenue * 0.16 },
+    { month: 'Mai', revenue: analytics.totalRevenue * 0.25, profit: analytics.totalRevenue * 0.20 },
+    { month: 'Jun', revenue: analytics.totalRevenue * 0.30, profit: analytics.totalRevenue * 0.24 }
+  ];
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Activity className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
+    <TooltipProvider>
+      <Layout>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-8 w-8 text-blue-600" />
+                📊 Analytics
+              </h1>
+              <p className="text-muted-foreground">📈 Análise detalhada de performance e indicadores financeiros</p>
+            </div>
+            <div className="flex gap-4">
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Selecione o período para análise dos dados</p>
+                  </TooltipContent>
+                </Tooltip>
+                <SelectContent>
+                  <SelectItem value="3months">⏱️ Últimos 3 meses</SelectItem>
+                  <SelectItem value="6months">📅 Últimos 6 meses</SelectItem>
+                  <SelectItem value="1year">🗓️ Último ano</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={currency} onValueChange={setCurrency}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Moeda para exibição dos valores financeiros</p>
+                  </TooltipContent>
+                </Tooltip>
+                <SelectContent>
+                  <SelectItem value="BRL">💰 BRL</SelectItem>
+                  <SelectItem value="USD">💵 USD</SelectItem>
+                  <SelectItem value="EUR">💶 EUR</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <Select value={timeFilter} onValueChange={setTimeFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3">Últimos 3 meses</SelectItem>
-                <SelectItem value="6">Últimos 6 meses</SelectItem>
-                <SelectItem value="12">Último ano</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Moeda" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="BRL">BRL</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
-                <SelectItem value="EUR">EUR</SelectItem>
-              </SelectContent>
-            </Select>
+
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Visão Geral</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Receita total de todos os projetos concluídos</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <CardDescription className="text-xs">💰 Receita Total</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl font-bold">{formatValue(analytics.totalRevenue)}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Performance</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Target className="h-4 w-4 text-blue-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Orçamento total planejado vs executado</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <CardDescription className="text-xs">🎯 Orçamento Total</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl font-bold">{formatValue(analytics.totalBudget)}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-red-500">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Financeiro</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      {analytics.budgetVariance >= 0 ? 
+                        <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                        <TrendingDown className="h-4 w-4 text-red-600" />
+                      }
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Diferença entre receita real e orçamento planejado</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <CardDescription className="text-xs">📈 Variação</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className={`text-xl font-bold ${getVarianceColor(analytics.budgetVariance)}`}>
+                  {analytics.budgetVariance >= 0 ? '+' : ''}{formatValue(analytics.budgetVariance)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-purple-500">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Qualidade</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Activity className="h-4 w-4 text-purple-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Percentual de variação orçamentária</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <CardDescription className="text-xs">📊 % Variação</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className={`text-xl font-bold ${getVarianceColor(analytics.variancePercentage)}`}>
+                  {analytics.variancePercentage >= 0 ? '+' : ''}{formatValue(analytics.variancePercentage, 'percentage')}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-yellow-500">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Estratégico</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Taxa de entrega de projetos no prazo</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <CardDescription className="text-xs">⏰ Entrega no Prazo</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl font-bold">{formatValue(analytics.onTimeDelivery, 'percentage')}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detailed Financial Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-400">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">💰 EBITDA</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Lucro antes de juros, impostos, depreciação e amortização</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-2xl font-bold">{formatValue(analytics.ebitda, 'percentage')}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-400">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">📊 Margem Líquida</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <BarChart3 className="h-4 w-4 text-blue-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Percentual de lucro líquido sobre a receita total</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-2xl font-bold">{analytics.liquidMargin}%</div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-red-400">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">💸 Fluxo de Caixa</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <TrendingUp className="h-4 w-4 text-red-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Fluxo de caixa operacional dos projetos</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-lg font-bold">{formatValue(analytics.cashFlow)}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-purple-400">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">🎯 ROI Médio</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Target className="h-4 w-4 text-purple-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Retorno sobre investimento médio dos projetos</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-2xl font-bold">+{analytics.averageROI}%</div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-yellow-400">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">⏱️ Payback</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Tempo médio para recuperação do investimento</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl font-bold">{analytics.paybackMonths} meses</div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-indigo-400">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">📈 NPV</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <TrendingUp className="h-4 w-4 text-indigo-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Valor Presente Líquido dos projetos</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-lg font-bold">{formatValue(analytics.npv)}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  📈 Evolução da Receita
+                </CardTitle>
+                <CardDescription>💰 Receita e lucratividade ao longo do tempo</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} name="Receita" />
+                    <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} name="Lucro" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PieChartIcon className="w-5 h-5 text-green-600" />
+                  🍰 Análise de Lucratividade
+                </CardTitle>
+                <CardDescription>📊 Indicadores financeiros chave</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center">
+                  <div className="text-4xl font-bold text-green-600 mb-2">
+                    +{analytics.variancePercentage >= 0 ? Math.abs(analytics.variancePercentage).toFixed(0) : Math.abs(analytics.variancePercentage).toFixed(0)}%
+                  </div>
+                  <p className="text-muted-foreground">📈 Lucratividade vs Planejado</p>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm">💰 Receita Realizada:</span>
+                      <span className="font-semibold">{formatValue(analytics.totalRevenue)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">🎯 Orçamento Planejado:</span>
+                      <span className="font-semibold">{formatValue(analytics.totalBudget)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">📊 Variação:</span>
+                      <span className={`font-semibold ${getVarianceColor(analytics.budgetVariance)}`}>
+                        {formatValue(analytics.budgetVariance)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="financial">Financeiro</TabsTrigger>
-            <TabsTrigger value="quality">Qualidade</TabsTrigger>
-            <TabsTrigger value="strategic">Estratégico</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            {/* Primary KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatusCard 
-                title="Projetos Ativos" 
-                count={getActiveProjects().length} 
-                color="blue"
-                icon={<Target className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Progresso Médio" 
-                count={`${progressStats.averageProgress}%`} 
-                color="green"
-                icon={<Gauge className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="No Prazo" 
-                count={progressStats.onTimeProjects} 
-                color="yellow"
-                icon={<CheckCircle className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Atrasados" 
-                count={progressStats.delayedProjects} 
-                color="red"
-                icon={<AlertTriangle className="w-4 h-4" />}
-              />
-            </div>
-
-            {/* Secondary KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-              <StatusCard 
-                title="Taxa de Sucesso" 
-                count="92%" 
-                color="green"
-                icon={<Award className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Eficiência da Equipe" 
-                count={`${advancedMetrics.teamEfficiency}%`} 
-                color="blue"
-                icon={<Users className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Satisfação Cliente" 
-                count={`${advancedMetrics.clientSatisfaction}%`} 
-                color="green"
-                icon={<Star className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Índice Qualidade" 
-                count={`${advancedMetrics.qualityIndex}%`} 
-                color="purple"
-                icon={<Shield className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Utilização Recursos" 
-                count={`${advancedMetrics.resourceUtilization}%`} 
-                color="blue"
-                icon={<Timer className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Projetos Alto Risco" 
-                count={advancedMetrics.riskFactor} 
-                color="red"
-                icon={<AlertTriangle className="w-4 h-4" />}
-              />
-            </div>
-
-            {/* Charts Row 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Evolução dos Projetos
-                  </CardTitle>
-                  <CardDescription>Criação e conclusão de projetos ao longo do tempo</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={timelineData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="projetos" stackId="1" stroke="#8884d8" fill="#8884d8" name="Iniciados" />
-                      <Area type="monotone" dataKey="concluidos" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="Concluídos" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5" />
-                    Distribuição de Progresso
-                  </CardTitle>
-                  <CardDescription>Projetos ativos por faixa de progresso</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={getProgressDistribution()}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={renderCustomLabel}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {getProgressDistribution().map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Charts Row 2 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Flag className="w-5 h-5" />
-                    Análise por Prioridade
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={getPriorityData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="value" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Briefcase className="w-5 h-5" />
-                    Projetos por Fase
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={getPhaseData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#82ca9d" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="performance" className="space-y-6">
-            {/* Performance Primary Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <StatusCard 
-                title="Projetos Concluídos" 
-                count={advancedMetrics.completedThisMonth} 
-                color="green"
-                icon={<CheckCircle className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Tempo Médio (dias)" 
-                count={advancedMetrics.avgCompletionTime} 
-                color="blue"
-                icon={<Timer className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Taxa de Conclusão" 
-                count={`${Math.round(advancedMetrics.completionRate)}%`} 
-                color="yellow"
-                icon={<Percent className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Velocity Score" 
-                count="8.2/10" 
-                color="purple"
-                icon={<TrendingUpIcon className="w-4 h-4" />}
-              />
-            </div>
-
-            {/* Performance Secondary Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <StatusCard 
-                title="Burn Rate" 
-                count="1.2x" 
-                color="yellow"
-                icon={<Activity className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Sprint Completion" 
-                count="94%" 
-                color="green"
-                icon={<Target className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Story Points/Dia" 
-                count="12.5" 
-                color="blue"
-                icon={<BarChart3 className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Lead Time" 
-                count="8.5 dias" 
-                color="purple"
-                icon={<Clock className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Throughput" 
-                count="15/mês" 
-                color="green"
-                icon={<TrendingUp className="w-4 h-4" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tendência de Performance</CardTitle>
-                  <CardDescription>Métricas de eficiência ao longo do tempo</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={timelineData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="eficiencia" stroke="#8884d8" name="Eficiência %" />
-                      <Line type="monotone" dataKey="produtividade" stroke="#82ca9d" name="Produtividade %" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Métricas Ágeis</CardTitle>
-                  <CardDescription>Indicadores de metodologia ágil</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Projetos no Prazo</span>
-                    <span className="font-medium">{Math.round((progressStats.onTimeProjects / (progressStats.onTimeProjects + progressStats.delayedProjects)) * 100)}%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Satisfação do Cliente</span>
-                    <span className="font-medium">87%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Retrabalho</span>
-                    <span className="font-medium">12%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Utilização de Recursos</span>
-                    <span className="font-medium">78%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="financial" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <StatusCard 
-                title="Receita Total" 
-                count={formatCurrency(financialStats.totalFinal, currencyFilter as "BRL" | "USD" | "EUR")} 
-                color="green"
-                icon={<DollarSign className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Orçamento Total" 
-                count={formatCurrency(financialStats.totalEstimated, currencyFilter as "BRL" | "USD" | "EUR")} 
-                color="blue"
-                icon={<Target className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Variação" 
-                count={formatCurrency(financialStats.variance, currencyFilter as "BRL" | "USD" | "EUR")} 
-                color={financialStats.variance >= 0 ? "green" : "red"}
-                icon={<TrendingUp className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="% Variação" 
-                count={`${financialStats.variancePercentage >= 0 ? '+' : ''}${Math.round(financialStats.variancePercentage)}%`} 
-                color={financialStats.variancePercentage >= 0 ? "green" : "red"}
-                icon={<Percent className="w-4 h-4" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-              <StatusCard 
-                title="EBITDA" 
-                count="28%" 
-                color="green"
-                icon={<DollarSign className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Margem Líquida" 
-                count="15%" 
-                color="blue"
-                icon={<Percent className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Fluxo de Caixa" 
-                count={formatCurrency(125000, currencyFilter as "BRL" | "USD" | "EUR")} 
-                color="green"
-                icon={<TrendingUp className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="ROI Médio" 
-                count="+24%" 
-                color="green"
-                icon={<Award className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Payback" 
-                count="18 meses" 
-                color="yellow"
-                icon={<Clock className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="NPV" 
-                count={formatCurrency(89000, currencyFilter as "BRL" | "USD" | "EUR")} 
-                color="purple"
-                icon={<TrendingUp className="w-4 h-4" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Evolução da Receita</CardTitle>
-                  <CardDescription>Receita e lucratividade ao longo do tempo</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={timelineData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="receita" stroke="#8884d8" fill="#8884d8" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Análise de Lucratividade</CardTitle>
-                  <CardDescription>Indicadores financeiros chave</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-green-600">+{Math.round(financialStats.variancePercentage)}%</p>
-                      <p className="text-sm text-muted-foreground">ROI Médio</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Projetos Lucrativos</span>
-                        <span className="font-medium">75%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Margem Bruta</span>
-                        <span className="font-medium">38%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Ticket Médio</span>
-                        <span className="font-medium">{formatCurrency(35000, currencyFilter as "BRL" | "USD" | "EUR")}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Break-even</span>
-                        <span className="font-medium">18 meses</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="quality" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <StatusCard 
-                title="Índice de Qualidade" 
-                count={`${advancedMetrics.qualityIndex}%`} 
-                color="green"
-                icon={<Award className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Satisfação do Cliente" 
-                count={`${advancedMetrics.clientSatisfaction}%`} 
-                color="blue"
-                icon={<Star className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Taxa de Defeitos" 
-                count="2.1%" 
-                color="yellow"
-                icon={<AlertTriangle className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Conformidade" 
-                count="97%" 
-                color="green"
-                icon={<Shield className="w-4 h-4" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-              <StatusCard 
-                title="Code Coverage" 
-                count="89%" 
-                color="green"
-                icon={<FileText className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Bugs/Sprint" 
-                count="3.2" 
-                color="yellow"
-                icon={<AlertTriangle className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Testes Automáticos" 
-                count="94%" 
-                color="green"
-                icon={<CheckCircle className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="First Time Right" 
-                count="87%" 
-                color="blue"
-                icon={<Target className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="SLA Compliance" 
-                count="99.2%" 
-                color="green"
-                icon={<Shield className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Customer Effort" 
-                count="4.2/5" 
-                color="purple"
-                icon={<Star className="w-4 h-4" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Evolução da Qualidade</CardTitle>
-                  <CardDescription>Métricas de qualidade ao longo do tempo</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={timelineData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis domain={[70, 100]} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="satisfacao" stroke="#82ca9d" name="Satisfação %" />
-                      <Line type="monotone" dataKey="qualidade" stroke="#8884d8" name="Qualidade %" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Métricas Detalhadas</CardTitle>
-                  <CardDescription>Indicadores específicos de qualidade</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Net Promoter Score</span>
-                    <span className="font-medium">72</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Resolution Time</span>
-                    <span className="font-medium">4.5h</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Error Rate</span>
-                    <span className="font-medium">0.3%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Documentation Coverage</span>
-                    <span className="font-medium">78%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Technical Debt Ratio</span>
-                    <span className="font-medium">12%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="strategic" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <StatusCard 
-                title="Market Share" 
-                count="12.5%" 
-                color="blue"
-                icon={<BarChart3 className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Innovation Index" 
-                count="78%" 
-                color="purple"
-                icon={<Zap className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Competitive Advantage" 
-                count="High" 
-                color="green"
-                icon={<Award className="w-4 h-4" />}
-              />
-              <StatusCard 
-                title="Strategic Alignment" 
-                count="92%" 
-                color="green"
-                icon={<Target className="w-4 h-4" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Balanced Scorecard</CardTitle>
-                  <CardDescription>Perspectivas estratégicas</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Financeira</span>
-                    <span className="font-medium text-green-600">85%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Clientes</span>
-                    <span className="font-medium text-blue-600">78%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Processos Internos</span>
-                    <span className="font-medium text-yellow-600">82%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Aprendizado</span>
-                    <span className="font-medium text-purple-600">76%</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>KPIs Estratégicos</CardTitle>
-                  <CardDescription>Indicadores de longo prazo</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Growth Rate</span>
-                    <span className="font-medium">+23%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Customer Retention</span>
-                    <span className="font-medium">94%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Employee Satisfaction</span>
-                    <span className="font-medium">86%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Digital Transformation</span>
-                    <span className="font-medium">72%</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Risk Management</CardTitle>
-                  <CardDescription>Gestão de riscos estratégicos</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Risk Score</span>
-                    <span className="font-medium text-yellow-600">Medium</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Compliance Rate</span>
-                    <span className="font-medium">98%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Incident Response</span>
-                    <span className="font-medium">2.5h</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Business Continuity</span>
-                    <span className="font-medium">95%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </Layout>
+      </Layout>
+    </TooltipProvider>
   );
 };
 
