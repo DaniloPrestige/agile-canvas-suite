@@ -221,21 +221,22 @@ const ProjectList: React.FC = () => {
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
     let currentY = 15;
-    const lineHeight = 5;
+    const lineHeight = 6;
     const margin = 20;
+    let pageNumber = 1;
 
-    // Professional Header with Company Branding
-    doc.setFillColor(30, 58, 138); // Dark blue
-    doc.rect(0, 0, pageWidth, 40, 'F');
+    // Company Header with styling
+    doc.setFillColor(41, 128, 185);
+    doc.rect(0, 0, pageWidth, 35, 'F');
     
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('PRESTIGE COSMÉTICOS', margin, 20);
+    doc.text('PRESTIGE COSMETICOS', margin, 18);
     
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text('RELATÓRIO EXECUTIVO DE PROJETOS', margin, 30);
+    doc.text('RELATORIO EXECUTIVO DE PROJETOS', margin, 28);
 
     // Date and author info
     doc.setFontSize(10);
@@ -245,7 +246,7 @@ const ProjectList: React.FC = () => {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    })} | Responsável: Danilo Araujo`, margin, 36);
+    })} | Responsavel: Danilo Araujo`, margin, 33);
 
     currentY = 50;
 
@@ -260,7 +261,7 @@ const ProjectList: React.FC = () => {
     currentY += 8;
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('📊 RESUMO EXECUTIVO', margin + 5, currentY);
+    doc.text('RESUMO EXECUTIVO', margin + 5, currentY);
 
     currentY += 8;
     doc.setFontSize(10);
@@ -277,20 +278,20 @@ const ProjectList: React.FC = () => {
     const col1X = margin + 10;
     const col2X = pageWidth / 2 + 10;
 
-    doc.text(`• Total de Projetos: ${totalProjects}`, col1X, currentY);
-    doc.text(`• Valor Total do Portfolio: ${formatCurrency(totalValue, 'BRL')}`, col2X, currentY);
+    doc.text(`Total de Projetos: ${totalProjects}`, col1X, currentY);
+    doc.text(`Valor Total do Portfolio: ${formatCurrency(totalValue, 'BRL')}`, col2X, currentY);
     currentY += lineHeight;
 
-    doc.text(`• Projetos Concluídos: ${completedProjects} (${totalProjects > 0 ? Math.round((completedProjects/totalProjects)*100) : 0}%)`, col1X, currentY);
-    doc.text(`• Progresso Médio: ${avgProgress}%`, col2X, currentY);
+    doc.text(`Projetos Concluidos: ${completedProjects} (${totalProjects > 0 ? Math.round((completedProjects/totalProjects)*100) : 0}%)`, col1X, currentY);
+    doc.text(`Progresso Medio: ${avgProgress}%`, col2X, currentY);
     currentY += lineHeight;
 
-    doc.text(`• Projetos Ativos: ${activeProjects}`, col1X, currentY);
-    doc.text(`• Projetos Atrasados: ${delayedProjects}`, col2X, currentY);
+    doc.text(`Projetos Ativos: ${activeProjects}`, col1X, currentY);
+    doc.text(`Projetos Atrasados: ${delayedProjects}`, col2X, currentY);
     currentY += lineHeight;
 
     const onTimeRate = activeProjects > 0 ? Math.round(((activeProjects - delayedProjects) / activeProjects) * 100) : 100;
-    doc.text(`• Taxa de Entrega no Prazo: ${onTimeRate}%`, col1X, currentY);
+    doc.text(`Taxa de Entrega no Prazo: ${onTimeRate}%`, col1X, currentY);
     
     currentY += 15;
 
@@ -299,6 +300,7 @@ const ProjectList: React.FC = () => {
       // Check if we need a new page
       if (currentY > pageHeight - 80) {
         doc.addPage();
+        pageNumber++;
         currentY = 20;
       }
 
@@ -312,12 +314,12 @@ const ProjectList: React.FC = () => {
       currentY += 6;
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(`${index + 1}. 📋 ${project.name}`, margin + 5, currentY);
+      doc.text(`${index + 1}. ${project.name}`, margin + 5, currentY);
 
       currentY += 6;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Cliente: ${project.client} | Responsável: ${project.responsible}`, margin + 5, currentY);
+      doc.text(`Cliente: ${project.client} | Responsavel: ${project.responsible}`, margin + 5, currentY);
 
       currentY += 6;
       doc.text(`Status: ${project.status} | Prioridade: ${project.priority} | Progresso: ${project.progress}%`, margin + 5, currentY);
@@ -327,26 +329,26 @@ const ProjectList: React.FC = () => {
       // Project Details Section
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('📋 DETALHES DO PROJETO', margin + 5, currentY);
+      doc.text('DETALHES DO PROJETO', margin + 5, currentY);
       currentY += 6;
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
 
       // Timeline and Financial Info
-      doc.text(`📅 Início: ${project.startDate || 'Não definido'}`, col1X, currentY);
-      doc.text(`🏁 Fim Previsto: ${project.endDate || 'Não definido'}`, col2X, currentY);
+      doc.text(`Inicio: ${project.startDate || 'Nao definido'}`, col1X, currentY);
+      doc.text(`Fim Previsto: ${project.endDate || 'Nao definido'}`, col2X, currentY);
       currentY += lineHeight;
 
-      doc.text(`🎯 Fase: ${project.phase}`, col1X, currentY);
-      doc.text(`💰 Valor: ${formatCurrency(project.finalValue || project.estimatedValue || 0, project.currency)}`, col2X, currentY);
+      doc.text(`Fase: ${project.phase}`, col1X, currentY);
+      doc.text(`Valor: ${formatCurrency(project.finalValue || project.estimatedValue || 0, project.currency)}`, col2X, currentY);
       currentY += lineHeight;
 
       // Progress Bar Visualization
       const progressBarWidth = 60;
       const progressFilled = (project.progress / 100) * progressBarWidth;
       
-      doc.text('📈 Progresso:', col1X, currentY);
+      doc.text('Progresso:', col1X, currentY);
       // Progress bar background
       doc.setFillColor(229, 231, 235);
       doc.rect(col1X + 25, currentY - 2, progressBarWidth, 3, 'F');
@@ -358,7 +360,7 @@ const ProjectList: React.FC = () => {
 
       // Description
       if (project.description) {
-        doc.text('📝 Descrição:', col1X, currentY);
+        doc.text('Descricao:', col1X, currentY);
         currentY += lineHeight;
         const descLines = doc.splitTextToSize(project.description, pageWidth - 2 * margin - 20);
         doc.text(descLines.slice(0, 2), col1X + 5, currentY);
@@ -369,18 +371,18 @@ const ProjectList: React.FC = () => {
       const tasks = db.getProjectTasks(project.id);
       if (tasks.length > 0) {
         doc.setFont('helvetica', 'bold');
-        doc.text('✅ TAREFAS:', col1X, currentY);
+        doc.text('TAREFAS:', col1X, currentY);
         currentY += lineHeight;
         
         doc.setFont('helvetica', 'normal');
         const completedTasks = tasks.filter(t => t.status === 'Concluída').length;
-        doc.text(`Total: ${tasks.length} | Concluídas: ${completedTasks} | Taxa: ${Math.round((completedTasks/tasks.length)*100)}%`, col1X + 5, currentY);
+        doc.text(`Total: ${tasks.length} | Concluidas: ${completedTasks} | Taxa: ${Math.round((completedTasks/tasks.length)*100)}%`, col1X + 5, currentY);
         currentY += lineHeight;
 
         tasks.slice(0, 5).forEach(task => {
           if (currentY > pageHeight - 25) return;
-          const status = task.status === 'Concluída' ? '[✓]' : 
-                        task.status === 'Em Progresso' ? '[⚡]' : '[⏳]';
+          const status = task.status === 'Concluída' ? '[x]' : 
+                        task.status === 'Em Progresso' ? '[>]' : '[ ]';
           doc.text(`${status} ${task.name}`, col1X + 10, currentY);
           currentY += lineHeight - 1;
         });
@@ -397,19 +399,19 @@ const ProjectList: React.FC = () => {
       
       if (comments.length > 0 || files.length > 0) {
         doc.setFont('helvetica', 'bold');
-        doc.text('💬 COMUNICAÇÃO:', col1X, currentY);
+        doc.text('COMUNICACAO:', col1X, currentY);
         currentY += lineHeight;
         
         doc.setFont('helvetica', 'normal');
-        doc.text(`💬 Comentários: ${comments.length}`, col1X + 5, currentY);
-        doc.text(`📁 Arquivos: ${files.length}`, col2X, currentY);
+        doc.text(`Comentarios: ${comments.length}`, col1X + 5, currentY);
+        doc.text(`Arquivos: ${files.length}`, col2X, currentY);
         currentY += lineHeight;
 
         // Recent comments
         if (comments.length > 0) {
           const recentComment = comments[comments.length - 1];
           const commentText = `"${recentComment.text.substring(0, 80)}${recentComment.text.length > 80 ? '...' : ''}" - ${recentComment.author}`;
-          doc.text(`Último: ${commentText}`, col1X + 5, currentY);
+          doc.text(`Ultimo: ${commentText}`, col1X + 5, currentY);
           currentY += lineHeight;
         }
       }
@@ -418,7 +420,7 @@ const ProjectList: React.FC = () => {
       if (project.status === 'Atrasado') {
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(220, 38, 38);
-        doc.text('⚠️ PROJETO EM ATRASO - ATENÇÃO REQUERIDA', col1X, currentY);
+        doc.text('PROJETO EM ATRASO - ATENCAO REQUERIDA', col1X, currentY);
         doc.setTextColor(0, 0, 0);
         currentY += lineHeight;
       }
@@ -429,11 +431,12 @@ const ProjectList: React.FC = () => {
     // Performance Analysis Page (if more than 3 projects)
     if (projectsToExport.length > 3) {
       doc.addPage();
+      pageNumber++;
       currentY = 20;
 
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('📈 ANÁLISE DE PERFORMANCE DO PORTFOLIO', margin, currentY);
+      doc.text('ANALISE DE PERFORMANCE DO PORTFOLIO', margin, currentY);
       currentY += 15;
 
       // Portfolio Performance Metrics
@@ -445,7 +448,7 @@ const ProjectList: React.FC = () => {
 
       currentY += 10;
       doc.setFontSize(12);
-      doc.text('💼 MÉTRICAS DO PORTFOLIO', margin + 10, currentY);
+      doc.text('METRICAS DO PORTFOLIO', margin + 10, currentY);
       currentY += 10;
 
       doc.setFontSize(10);
@@ -460,11 +463,11 @@ const ProjectList: React.FC = () => {
         return sum;
       }, 0) / projectsToExport.filter(p => p.startDate && p.endDate).length || 0;
 
-      doc.text(`• Projetos de Alta Prioridade: ${highPriorityProjects} (${Math.round((highPriorityProjects/totalProjects)*100)}%)`, margin + 15, currentY);
+      doc.text(`Projetos de Alta Prioridade: ${highPriorityProjects} (${Math.round((highPriorityProjects/totalProjects)*100)}%)`, margin + 15, currentY);
       currentY += lineHeight;
-      doc.text(`• Duração Média dos Projetos: ${Math.round(avgProjectDuration)} dias`, margin + 15, currentY);
+      doc.text(`Duracao Media dos Projetos: ${Math.round(avgProjectDuration)} dias`, margin + 15, currentY);
       currentY += lineHeight;
-      doc.text(`• Valor Médio por Projeto: ${formatCurrency(totalValue/totalProjects, 'BRL')}`, margin + 15, currentY);
+      doc.text(`Valor Medio por Projeto: ${formatCurrency(totalValue/totalProjects, 'BRL')}`, margin + 15, currentY);
       currentY += lineHeight;
 
       // Status Distribution
@@ -477,14 +480,14 @@ const ProjectList: React.FC = () => {
 
       currentY += 10;
       doc.setFont('helvetica', 'bold');
-      doc.text('📊 DISTRIBUIÇÃO POR STATUS:', margin + 15, currentY);
+      doc.text('DISTRIBUICAO POR STATUS:', margin + 15, currentY);
       currentY += lineHeight;
 
       doc.setFont('helvetica', 'normal');
       Object.entries(statusDistribution).forEach(([status, count]) => {
         if (count > 0) {
           const percentage = Math.round((count/totalProjects)*100);
-          doc.text(`• ${status}: ${count} projetos (${percentage}%)`, margin + 20, currentY);
+          doc.text(`${status}: ${count} projetos (${percentage}%)`, margin + 20, currentY);
           currentY += lineHeight;
         }
       });
@@ -498,9 +501,9 @@ const ProjectList: React.FC = () => {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(107, 114, 128);
-    doc.text('Relatório gerado automaticamente pelo Sistema de Gerenciamento de Projetos - Prestige Cosméticos', margin, footerY);
-    doc.text('Este documento contém informações confidenciais e é destinado exclusivamente à diretoria da empresa.', margin, footerY + 5);
-    doc.text(`Página ${doc.internal.getCurrentPageInfo().pageNumber} | Gerado por: Danilo Araujo | ${new Date().toLocaleDateString('pt-BR')}`, margin, footerY + 10);
+    doc.text('Relatorio gerado automaticamente pelo Sistema de Gerenciamento de Projetos - Prestige Cosmeticos', margin, footerY);
+    doc.text('Este documento contem informacoes confidenciais e e destinado exclusivamente a diretoria da empresa.', margin, footerY + 5);
+    doc.text(`Pagina ${pageNumber} | Gerado por: Danilo Araujo | ${new Date().toLocaleDateString('pt-BR')}`, margin, footerY + 10);
 
     const fileName = projectsToExport.length === 1 
       ? `relatorio-${projectsToExport[0].name.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`
@@ -517,13 +520,9 @@ const ProjectList: React.FC = () => {
     <TooltipProvider>
       <Layout>
         <div className="space-y-6">
-          {/* Header */}
+          {/* Header - Simplified as requested */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-                <FolderOpen className="h-8 w-8 text-blue-600" />
-                📁 Gerência de Projetos
-              </h1>
               <p className="text-muted-foreground">🚀 Gerencie todos os seus projetos em um só lugar</p>
             </div>
             <div className="flex gap-2">

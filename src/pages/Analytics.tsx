@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,10 +25,13 @@ interface Analytics {
   onTimeDelivery: number;
 }
 
+type CurrencyType = 'BRL' | 'USD' | 'EUR';
+
 const Analytics: React.FC = () => {
+  const navigate = useNavigate();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [timeRange, setTimeRange] = useState('6months');
-  const [currency, setCurrency] = useState('BRL');
+  const [currency, setCurrency] = useState<CurrencyType>('BRL');
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
@@ -91,6 +94,11 @@ const Analytics: React.FC = () => {
     return value.toString();
   };
 
+  const handleCardClick = (cardType: string) => {
+    // Navigate to detailed indicator page
+    navigate(`/analytics/${cardType}`);
+  };
+
   if (!analytics) {
     return (
       <Layout>
@@ -147,7 +155,7 @@ const Analytics: React.FC = () => {
                   <SelectItem value="1year">🗓️ Último ano</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={currency} onValueChange={setCurrency}>
+              <Select value={currency} onValueChange={(value) => setCurrency(value as CurrencyType)}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <SelectTrigger className="w-[100px]">
@@ -167,9 +175,12 @@ const Analytics: React.FC = () => {
             </div>
           </div>
 
-          {/* Overview Cards */}
+          {/* Overview Cards - Now Clickable */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-green-500 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('revenue')}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Visão Geral</CardTitle>
@@ -178,18 +189,21 @@ const Analytics: React.FC = () => {
                       <DollarSign className="h-4 w-4 text-green-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Receita total de todos os projetos concluídos</p>
+                      <p>Receita total de todos os projetos concluídos - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
                 <CardDescription className="text-xs">💰 Receita Total</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-xl font-bold">{formatValue(analytics.totalRevenue)}</div>
+                <div className="text-lg font-bold">{formatValue(analytics.totalRevenue)}</div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('budget')}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Performance</CardTitle>
@@ -198,18 +212,21 @@ const Analytics: React.FC = () => {
                       <Target className="h-4 w-4 text-blue-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Orçamento total planejado vs executado</p>
+                      <p>Orçamento total planejado vs executado - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
                 <CardDescription className="text-xs">🎯 Orçamento Total</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-xl font-bold">{formatValue(analytics.totalBudget)}</div>
+                <div className="text-lg font-bold">{formatValue(analytics.totalBudget)}</div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-red-500">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-red-500 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('variance')}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Financeiro</CardTitle>
@@ -221,20 +238,23 @@ const Analytics: React.FC = () => {
                       }
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Diferença entre receita real e orçamento planejado</p>
+                      <p>Diferença entre receita real e orçamento planejado - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
                 <CardDescription className="text-xs">📈 Variação</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className={`text-xl font-bold ${getVarianceColor(analytics.budgetVariance)}`}>
+                <div className={`text-lg font-bold ${getVarianceColor(analytics.budgetVariance)}`}>
                   {analytics.budgetVariance >= 0 ? '+' : ''}{formatValue(analytics.budgetVariance)}
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-purple-500">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-purple-500 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('quality')}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Qualidade</CardTitle>
@@ -243,20 +263,23 @@ const Analytics: React.FC = () => {
                       <Activity className="h-4 w-4 text-purple-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Percentual de variação orçamentária</p>
+                      <p>Percentual de variação orçamentária - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
                 <CardDescription className="text-xs">📊 % Variação</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className={`text-xl font-bold ${getVarianceColor(analytics.variancePercentage)}`}>
+                <div className={`text-lg font-bold ${getVarianceColor(analytics.variancePercentage)}`}>
                   {analytics.variancePercentage >= 0 ? '+' : ''}{formatValue(analytics.variancePercentage, 'percentage')}
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-yellow-500">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-yellow-500 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('delivery')}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Estratégico</CardTitle>
@@ -265,21 +288,24 @@ const Analytics: React.FC = () => {
                       <Clock className="h-4 w-4 text-yellow-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Taxa de entrega de projetos no prazo</p>
+                      <p>Taxa de entrega de projetos no prazo - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
                 <CardDescription className="text-xs">⏰ Entrega no Prazo</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-xl font-bold">{formatValue(analytics.onTimeDelivery, 'percentage')}</div>
+                <div className="text-lg font-bold">{formatValue(analytics.onTimeDelivery, 'percentage')}</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Detailed Financial Metrics */}
+          {/* Detailed Financial Metrics - Also Clickable */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-400">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-green-400 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('ebitda')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">💰 EBITDA</CardTitle>
@@ -288,17 +314,20 @@ const Analytics: React.FC = () => {
                       <DollarSign className="h-4 w-4 text-green-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Lucro antes de juros, impostos, depreciação e amortização</p>
+                      <p>Lucro antes de juros, impostos, depreciação e amortização - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-2xl font-bold">{formatValue(analytics.ebitda, 'percentage')}</div>
+                <div className="text-lg font-bold">{formatValue(analytics.ebitda, 'currency')}</div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-400">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-blue-400 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('margin')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">📊 Margem Líquida</CardTitle>
@@ -307,17 +336,20 @@ const Analytics: React.FC = () => {
                       <BarChart3 className="h-4 w-4 text-blue-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Percentual de lucro líquido sobre a receita total</p>
+                      <p>Percentual de lucro líquido sobre a receita total - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-2xl font-bold">{analytics.liquidMargin}%</div>
+                <div className="text-lg font-bold">{analytics.liquidMargin}%</div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-red-400">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-red-400 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('cashflow')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">💸 Fluxo de Caixa</CardTitle>
@@ -326,17 +358,20 @@ const Analytics: React.FC = () => {
                       <TrendingUp className="h-4 w-4 text-red-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Fluxo de caixa operacional dos projetos</p>
+                      <p>Fluxo de caixa operacional dos projetos - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-lg font-bold">{formatValue(analytics.cashFlow)}</div>
+                <div className="text-sm font-bold">{formatValue(analytics.cashFlow)}</div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-purple-400">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-purple-400 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('roi')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">🎯 ROI Médio</CardTitle>
@@ -345,17 +380,20 @@ const Analytics: React.FC = () => {
                       <Target className="h-4 w-4 text-purple-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Retorno sobre investimento médio dos projetos</p>
+                      <p>Retorno sobre investimento médio dos projetos - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-2xl font-bold">+{analytics.averageROI}%</div>
+                <div className="text-lg font-bold">+{analytics.averageROI}%</div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-yellow-400">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-yellow-400 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('payback')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">⏱️ Payback</CardTitle>
@@ -364,17 +402,20 @@ const Analytics: React.FC = () => {
                       <Clock className="h-4 w-4 text-yellow-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Tempo médio para recuperação do investimento</p>
+                      <p>Tempo médio para recuperação do investimento - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-xl font-bold">{analytics.paybackMonths} meses</div>
+                <div className="text-sm font-bold">{analytics.paybackMonths} meses</div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow border-l-4 border-l-indigo-400">
+            <Card 
+              className="hover:shadow-md transition-shadow border-l-4 border-l-indigo-400 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleCardClick('npv')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">📈 NPV</CardTitle>
@@ -383,13 +424,13 @@ const Analytics: React.FC = () => {
                       <TrendingUp className="h-4 w-4 text-indigo-600" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Valor Presente Líquido dos projetos</p>
+                      <p>Valor Presente Líquido dos projetos - Clique para detalhes</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-lg font-bold">{formatValue(analytics.npv)}</div>
+                <div className="text-sm font-bold">{formatValue(analytics.npv)}</div>
               </CardContent>
             </Card>
           </div>
