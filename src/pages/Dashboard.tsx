@@ -1,23 +1,18 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import StatusCard from '../components/StatusCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { 
   PieChart as PieChartIcon, 
   BarChart3, 
   TrendingUp, 
-  Calendar, 
   Users, 
   DollarSign,
   Target,
-  Clock,
-  AlertTriangle,
   CheckCircle,
   Activity,
-  Zap,
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
@@ -77,14 +72,14 @@ const Dashboard: React.FC = () => {
   };
 
   const getResourceUtilization = () => {
-    const totalCapacity = 100; // Simplified capacity
-    const utilized = activeProjects.length * 20; // Simplified calculation
+    const totalCapacity = 100;
+    const utilized = activeProjects.length * 20;
     const utilization = Math.min((utilized / totalCapacity) * 100, 100);
     
     return {
       utilization,
       activeResources: activeProjects.length,
-      totalCapacity: 5 // Simplified total team capacity
+      totalCapacity: 5
     };
   };
 
@@ -108,25 +103,22 @@ const Dashboard: React.FC = () => {
     }));
   };
 
-  const getTimelineData = () => {
-    // Simplified timeline data for demonstration
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-    return months.map((month, index) => ({
-      name: month,
-      projetos: Math.floor(Math.random() * 8) + 2,
-      concluidos: Math.floor(Math.random() * 5) + 1,
-      receita: Math.floor(Math.random() * 80000) + 30000
-    }));
+  // Check if we have enough data for timeline charts
+  const hasEnoughDataForTimeline = () => {
+    if (allProjects.length < 5) return false;
+    
+    const projectDates = allProjects.map(p => new Date(p.createdAt));
+    const uniqueMonths = new Set(projectDates.map(date => `${date.getFullYear()}-${date.getMonth()}`));
+    return uniqueMonths.size >= 3;
   };
 
-  const getProductivityTrend = () => {
-    // Simplified productivity data
-    const weeks = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'];
-    return weeks.map(week => ({
-      name: week,
-      produtividade: Math.floor(Math.random() * 30) + 70,
-      qualidade: Math.floor(Math.random() * 20) + 80
-    }));
+  const hasEnoughDataForWeeklyTrend = () => {
+    if (allProjects.length < 10) return false;
+    
+    const now = new Date();
+    const fourWeeksAgo = new Date(now.getTime() - (28 * 24 * 60 * 60 * 1000));
+    const recentProjects = allProjects.filter(p => new Date(p.createdAt) >= fourWeeksAgo);
+    return recentProjects.length >= 8;
   };
 
   const activeStats = getStats(activeProjects);
@@ -157,13 +149,13 @@ const Dashboard: React.FC = () => {
         <Tabs defaultValue="active" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active" className="flex items-center gap-2">
-              📈 Projetos Ativos
+              Projetos Ativos
             </TabsTrigger>
             <TabsTrigger value="finished" className="flex items-center gap-2">
-              📅 Projetos Finalizados
+              Projetos Finalizados
             </TabsTrigger>
             <TabsTrigger value="deleted" className="flex items-center gap-2">
-              🗑️ Projetos Excluídos
+              Projetos Excluídos
             </TabsTrigger>
           </TabsList>
 
@@ -268,25 +260,34 @@ const Dashboard: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={getPriorityData(activeProjects)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={renderCustomLabel}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {getPriorityData(activeProjects).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {getPriorityData(activeProjects).length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={getPriorityData(activeProjects)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={renderCustomLabel}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {getPriorityData(activeProjects).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <PieChartIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum projeto ativo para exibir</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -298,65 +299,56 @@ const Dashboard: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={getPhaseData(activeProjects)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {activeProjects.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={getPhaseData(activeProjects)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum projeto ativo para exibir</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Charts Row 2 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Conditional Timeline Charts - Only show if we have enough data */}
+            {!hasEnoughDataForTimeline() && !hasEnoughDataForWeeklyTrend() && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="w-5 h-5" />
-                    Tendência de Criação
+                    Análises Temporais
                   </CardTitle>
-                  <CardDescription>Projetos criados nos últimos meses</CardDescription>
+                  <CardDescription>Gráficos de tendência e produtividade</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={getTimelineData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="projetos" stackId="1" stroke="#8884d8" fill="#8884d8" />
-                      <Area type="monotone" dataKey="concluidos" stackId="1" stroke="#82ca9d" fill="#82ca9d" />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg font-medium mb-2">Dados insuficientes para análise temporal</p>
+                      <p className="text-sm">
+                        Para ver gráficos de tendência e produtividade, você precisa de:
+                      </p>
+                      <ul className="text-sm mt-2 space-y-1">
+                        <li>• Pelo menos 5 projetos para análise mensal</li>
+                        <li>• Pelo menos 10 projetos para análise semanal</li>
+                        <li>• Projetos distribuídos em diferentes períodos</li>
+                      </ul>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    Produtividade Semanal
-                  </CardTitle>
-                  <CardDescription>Performance e qualidade por semana</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={getProductivityTrend()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="produtividade" stroke="#8884d8" name="Produtividade" />
-                      <Line type="monotone" dataKey="qualidade" stroke="#82ca9d" name="Qualidade" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
+            )}
 
             {/* Financial and Resource Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -415,7 +407,6 @@ const Dashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="finished" className="space-y-6">
-            
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <StatusCard title="Total Finalizados" count={finishedProjects.length} color="green" />
               <StatusCard title="Em Progresso" count={finishedStats.inProgress} color="yellow" />
@@ -433,25 +424,34 @@ const Dashboard: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={getPriorityData(finishedProjects)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={renderCustomLabel}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {getPriorityData(finishedProjects).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {getPriorityData(finishedProjects).length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={getPriorityData(finishedProjects)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={renderCustomLabel}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {getPriorityData(finishedProjects).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <PieChartIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum projeto finalizado para exibir</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -478,7 +478,6 @@ const Dashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="deleted" className="space-y-6">
-            
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <StatusCard title="Total Excluídos" count={deletedProjects.length} color="red" />
               <StatusCard title="Em Progresso" count={deletedStats.inProgress} color="yellow" />

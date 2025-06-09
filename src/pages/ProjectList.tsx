@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -230,35 +229,107 @@ const ProjectList: React.FC = () => {
     }
 
     const selectedProjectsData = projects.filter(p => selectedProjects.includes(p.id));
-    generatePDF(selectedProjectsData);
+    generateExecutiveReport(selectedProjectsData);
   };
 
-  const generatePDF = (projectsData: Project[]) => {
+  const generateExecutiveReport = (projectsData: Project[]) => {
     const pdf = new jsPDF();
-    let yPosition = 20;
+    
+    // Header
+    pdf.setFillColor(52, 144, 220);
+    pdf.rect(0, 0, 210, 30, 'F');
+    
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(20);
+    pdf.text('PRESTIGE COSMETICOS', 20, 15);
+    
+    pdf.setFontSize(14);
+    pdf.text('RELATÓRIO EXECUTIVO DE PROJETOS', 20, 25);
+    
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('pt-BR');
+    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    pdf.setFontSize(10);
+    pdf.text(`Gerado em: ${dateStr}, ${timeStr} | Responsável: Sistema`, 20, 35);
 
-    pdf.setFontSize(16);
-    pdf.text('Relatório de Projetos', 20, yPosition);
-    yPosition += 20;
+    // Executive Summary
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(14);
+    pdf.text('RESUMO EXECUTIVO', 20, 55);
+    
+    pdf.rect(15, 60, 180, 40);
+    
+    const totalProjects = projectsData.length;
+    const completedProjects = projectsData.filter(p => p.status === 'Concluída').length;
+    const activeProjects = projectsData.filter(p => p.status !== 'Concluída' && !p.isDeleted).length;
+    const delayedProjects = projectsData.filter(p => p.status === 'Atrasado').length;
+    const totalValue = projectsData.reduce((sum, p) => sum + (p.finalValue || p.estimatedValue), 0);
+    const avgProgress = activeProjects > 0 ? 
+      Math.round(projectsData.reduce((sum, p) => sum + calculateProjectProgress(p.id), 0) / totalProjects) : 0;
+    const onTimeRate = activeProjects > 0 ? Math.round(((activeProjects - delayedProjects) / activeProjects) * 100) : 100;
 
-    projectsData.forEach((project) => {
-      if (yPosition > 250) {
+    pdf.setFontSize(10);
+    let yPos = 70;
+    
+    pdf.text(`Total de Projetos: ${totalProjects}`, 20, yPos);
+    pdf.text(`Valor Total do Portfolio: R$ ${totalValue.toFixed(2)}`, 120, yPos);
+    
+    yPos += 8;
+    pdf.text(`Projetos Concluídos: ${completedProjects} (${Math.round((completedProjects/totalProjects)*100)}%)`, 20, yPos);
+    pdf.text(`Progresso Médio: ${avgProgress}%`, 120, yPos);
+    
+    yPos += 8;
+    pdf.text(`Projetos Ativos: ${activeProjects}`, 20, yPos);
+    pdf.text(`Projetos Atrasados: ${delayedProjects}`, 120, yPos);
+    
+    yPos += 8;
+    pdf.text(`Taxa de Entrega no Prazo: ${onTimeRate}%`, 20, yPos);
+
+    // Project Details
+    yPos = 120;
+    
+    projectsData.forEach((project, index) => {
+      if (yPos > 250) {
         pdf.addPage();
-        yPosition = 20;
+        yPos = 20;
       }
 
       pdf.setFontSize(12);
-      pdf.text(`Nome: ${project.name}`, 20, yPosition);
-      yPosition += 10;
-      pdf.text(`Cliente: ${project.client}`, 20, yPosition);
-      yPosition += 10;
-      pdf.text(`Status: ${project.status}`, 20, yPosition);
-      yPosition += 10;
-      pdf.text(`Prioridade: ${project.priority}`, 20, yPosition);
-      yPosition += 15;
+      pdf.text(`${index + 1}. ${project.name}`, 20, yPos);
+      
+      pdf.rect(15, yPos + 5, 180, 25);
+      
+      pdf.setFontSize(10);
+      pdf.text(`Cliente: ${project.client} | Responsável: ${project.responsible}`, 20, yPos + 15);
+      pdf.text(`Status: ${project.status} | Prioridade: ${project.priority} | Progresso: ${calculateProjectProgress(project.id)}%`, 20, yPos + 25);
+      
+      yPos += 40;
+      
+      pdf.text('DETALHES DO PROJETO', 20, yPos);
+      yPos += 10;
+      
+      pdf.text(`Início: ${project.startDate || 'Não definido'}`, 20, yPos);
+      pdf.text(`Fim Previsto: ${project.endDate || 'Não definido'}`, 120, yPos);
+      
+      yPos += 8;
+      pdf.text(`Fase: ${project.phase || 'Não definido'}`, 20, yPos);
+      pdf.text(`Valor: R$ ${(project.finalValue || project.estimatedValue).toFixed(2)}`, 120, yPos);
+      
+      yPos += 8;
+      const progressPercent = calculateProjectProgress(project.id);
+      pdf.text(`Progresso:`, 20, yPos);
+      
+      // Progress bar
+      pdf.setFillColor(200, 200, 200);
+      pdf.rect(60, yPos - 3, 50, 4, 'F');
+      pdf.setFillColor(52, 144, 220);
+      pdf.rect(60, yPos - 3, (50 * progressPercent) / 100, 4, 'F');
+      pdf.text(`${progressPercent}%`, 115, yPos);
+      
+      yPos += 20;
     });
 
-    pdf.save('projetos-exportados.pdf');
+    pdf.save('relatorio-executivo-projetos.pdf');
   };
 
   const tabCounts = getTabCounts();
@@ -272,8 +343,7 @@ const ProjectList: React.FC = () => {
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Projetos</h1>
-              <p className="text-muted-foreground mt-1">Gerencie seus projetos</p>
+              <h1 className="text-3xl font-bold text-foreground">🚀 Gerencie todos os seus projetos em um só lugar</h1>
             </div>
             
             <Tooltip>
@@ -381,7 +451,7 @@ const ProjectList: React.FC = () => {
             </div>
           )}
 
-          {/* Tabs with extended width */}
+          {/* Tabs */}
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'finished' | 'deleted')} className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-12">
               <TabsTrigger value="active" className="flex items-center gap-2 flex-1 justify-center">
@@ -421,7 +491,7 @@ const ProjectList: React.FC = () => {
                     {filteredProjects.map((project) => (
                       <div key={project.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 flex-1">
                             <Checkbox
                               checked={selectedProjects.includes(project.id)}
                               onCheckedChange={(checked) => handleSelectProject(project.id, checked as boolean)}
@@ -429,10 +499,80 @@ const ProjectList: React.FC = () => {
                             <div className="flex-1">
                               <Link 
                                 to={`/project/${project.id}`}
-                                className="font-semibold text-lg text-gray-900 hover:text-blue-600 cursor-pointer transition-colors"
+                                className="font-semibold text-lg text-gray-900 hover:text-blue-600 cursor-pointer transition-colors mr-2"
                               >
                                 {project.name}
                               </Link>
+                              
+                              {/* Action Buttons next to project name */}
+                              <div className="inline-flex gap-1 ml-2">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => window.location.href = `/project/${project.id}`}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Ver Detalhes</p>
+                                  </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => handleEditProject(project)}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Editar</p>
+                                  </TooltipContent>
+                                </Tooltip>
+
+                                {activeTab === 'active' && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => handleFinishProject(project)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <CheckSquare className="h-3 w-3" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Finalizar</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => handleDeleteProject(project)}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Excluir</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                              
                               <p className="text-sm text-gray-600 mt-1">{project.client}</p>
                             </div>
                           </div>
@@ -467,73 +607,6 @@ const ProjectList: React.FC = () => {
                               {formatCurrency(project.finalValue || project.estimatedValue, project.currency)}
                             </p>
                           </div>
-
-                          {/* Action Buttons - Inline instead of dropdown */}
-                          <div className="flex justify-between items-center pt-4 border-t">
-                            <div className="flex gap-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => window.location.href = `/project/${project.id}`}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Ver Detalhes</p>
-                                </TooltipContent>
-                              </Tooltip>
-
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => handleEditProject(project)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Editar</p>
-                                </TooltipContent>
-                              </Tooltip>
-
-                              {activeTab === 'active' && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => handleFinishProject(project)}
-                                    >
-                                      <CheckSquare className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Finalizar</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => handleDeleteProject(project)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Excluir</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     ))}
@@ -552,11 +625,10 @@ const ProjectList: React.FC = () => {
             <DialogTitle>Criar Novo Projeto</DialogTitle>
           </DialogHeader>
           <ProjectForm
-            onSuccess={() => {
+            onClose={() => {
               setIsCreateDialogOpen(false);
               loadProjects();
             }}
-            onCancel={() => setIsCreateDialogOpen(false)}
           />
         </DialogContent>
       </Dialog>
@@ -574,15 +646,11 @@ const ProjectList: React.FC = () => {
           </DialogHeader>
           {editingProject && (
             <ProjectForm
-              project={editingProject}
-              onSuccess={() => {
+              initialData={editingProject}
+              onClose={() => {
                 setIsEditDialogOpen(false);
                 setEditingProject(null);
                 loadProjects();
-              }}
-              onCancel={() => {
-                setIsEditDialogOpen(false);
-                setEditingProject(null);
               }}
             />
           )}
