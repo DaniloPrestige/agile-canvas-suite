@@ -669,7 +669,7 @@ const ProjectList: React.FC = () => {
             <div className="overflow-hidden">
               {editingProject && (
                 <ProjectForm 
-                  project={editingProject}
+                  initialData={editingProject}
                   onSubmit={() => {
                     setIsEditDialogOpen(false);
                     setEditingProject(null);
@@ -679,6 +679,7 @@ const ProjectList: React.FC = () => {
                     setIsEditDialogOpen(false);
                     setEditingProject(null);
                   }}
+                  isEditing={true}
                 />
               )}
             </div>
