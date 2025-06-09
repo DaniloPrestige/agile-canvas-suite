@@ -137,7 +137,7 @@ const ProjectList: React.FC = () => {
   };
 
   const handleFinishProject = (project: Project) => {
-    db.updateProject(project.id, { status: 'Concluído' });
+    db.updateProject(project.id, { status: 'Concluído', progress: 100 });
     loadProjects();
     setActiveTab('finished');
   };
@@ -154,7 +154,7 @@ const ProjectList: React.FC = () => {
       db.updateProject(project.id, { status: 'Em Progresso' });
       setActiveTab('active');
     } else if (newStatus === 'finished') {
-      db.updateProject(project.id, { status: 'Concluído' });
+      db.updateProject(project.id, { status: 'Concluído', progress: 100 });
       setActiveTab('finished');
     } else if (newStatus === 'deleted') {
       db.deleteProject(project.id);
@@ -216,7 +216,7 @@ const ProjectList: React.FC = () => {
     generatePDF(selectedProjectsData);
   };
 
-  const generatePDF = (projectsToExport: Project[]) => {
+  const generatePDF = async (projectsToExport: Project[]) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
@@ -279,7 +279,7 @@ const ProjectList: React.FC = () => {
     const col2X = pageWidth / 2 + 10;
 
     doc.text(`Total de Projetos: ${totalProjects}`, col1X, currentY);
-    doc.text(`Valor Total do Portfolio: ${formatCurrency(totalValue, 'BRL')}`, col2X, currentY);
+    doc.text(`Valor Total do Portfolio: ${await formatCurrency(totalValue, 'BRL')}`, col2X, currentY);
     currentY += lineHeight;
 
     doc.text(`Projetos Concluidos: ${completedProjects} (${totalProjects > 0 ? Math.round((completedProjects/totalProjects)*100) : 0}%)`, col1X, currentY);
@@ -296,7 +296,7 @@ const ProjectList: React.FC = () => {
     currentY += 15;
 
     // Individual Project Details
-    projectsToExport.forEach((project, index) => {
+    for (const [index, project] of projectsToExport.entries()) {
       // Check if we need a new page
       if (currentY > pageHeight - 80) {
         doc.addPage();
@@ -341,7 +341,7 @@ const ProjectList: React.FC = () => {
       currentY += lineHeight;
 
       doc.text(`Fase: ${project.phase}`, col1X, currentY);
-      doc.text(`Valor: ${formatCurrency(project.finalValue || project.estimatedValue || 0, project.currency)}`, col2X, currentY);
+      doc.text(`Valor: ${await formatCurrency(project.finalValue || project.estimatedValue || 0, project.currency)}`, col2X, currentY);
       currentY += lineHeight;
 
       // Progress Bar Visualization
@@ -381,8 +381,7 @@ const ProjectList: React.FC = () => {
 
         tasks.slice(0, 5).forEach(task => {
           if (currentY > pageHeight - 25) return;
-          const status = task.status === 'Concluída' ? '[x]' : 
-                        task.status === 'Em Progresso' ? '[>]' : '[ ]';
+          const status = task.status === 'Concluída' ? '[x]' : '[  ]';
           doc.text(`${status} ${task.name}`, col1X + 10, currentY);
           currentY += lineHeight - 1;
         });
@@ -426,7 +425,7 @@ const ProjectList: React.FC = () => {
       }
 
       currentY += 10; // Space between projects
-    });
+    }
 
     // Performance Analysis Page (if more than 3 projects)
     if (projectsToExport.length > 3) {
@@ -467,7 +466,7 @@ const ProjectList: React.FC = () => {
       currentY += lineHeight;
       doc.text(`Duracao Media dos Projetos: ${Math.round(avgProjectDuration)} dias`, margin + 15, currentY);
       currentY += lineHeight;
-      doc.text(`Valor Medio por Projeto: ${formatCurrency(totalValue/totalProjects, 'BRL')}`, margin + 15, currentY);
+      doc.text(`Valor Medio por Projeto: ${await formatCurrency(totalValue/totalProjects, 'BRL')}`, margin + 15, currentY);
       currentY += lineHeight;
 
       // Status Distribution
@@ -493,7 +492,7 @@ const ProjectList: React.FC = () => {
       });
     }
 
-    // Professional Footer
+    // Professional Footer (sem data)
     const footerY = pageHeight - 20;
     doc.setFillColor(248, 250, 252);
     doc.rect(0, footerY - 5, pageWidth, 25, 'F');
@@ -503,7 +502,7 @@ const ProjectList: React.FC = () => {
     doc.setTextColor(107, 114, 128);
     doc.text('Relatorio gerado automaticamente pelo Sistema de Gerenciamento de Projetos - Prestige Cosmeticos', margin, footerY);
     doc.text('Este documento contem informacoes confidenciais e e destinado exclusivamente a diretoria da empresa.', margin, footerY + 5);
-    doc.text(`Pagina ${pageNumber} | Gerado por: Danilo Araujo | ${new Date().toLocaleDateString('pt-BR')}`, margin, footerY + 10);
+    doc.text(`Pagina ${pageNumber} | Gerado por: Danilo Araujo`, margin, footerY + 10);
 
     const fileName = projectsToExport.length === 1 
       ? `relatorio-${projectsToExport[0].name.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`
@@ -520,7 +519,7 @@ const ProjectList: React.FC = () => {
     <TooltipProvider>
       <Layout>
         <div className="space-y-6">
-          {/* Header - Simplified as requested */}
+          {/* Header */}
           <div className="flex justify-between items-center">
             <div>
               <p className="text-muted-foreground">🚀 Gerencie todos os seus projetos em um só lugar</p>
@@ -542,7 +541,7 @@ const ProjectList: React.FC = () => {
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button onClick={() => setIsCreateDialogOpen(true)} className="hover:bg-blue-600">
+                    <Button onClick={() => setIsCreateDialogOpen(true)} variant="outline" className="bg-white text-gray-900 border-gray-300 hover:bg-gray-50">
                       <Plus className="h-4 w-4 mr-2" />
                       ➕ Novo Projeto
                     </Button>
@@ -584,7 +583,7 @@ const ProjectList: React.FC = () => {
             ))}
           </div>
 
-          {/* Tabs */}
+          {/* Tabs - Removendo ícones simples, mantendo emojis */}
           <div className="grid grid-cols-3 bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => setActiveTab('active')}
@@ -594,7 +593,6 @@ const ProjectList: React.FC = () => {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <FolderOpen className="w-4 h-4" />
               📂 Ativos ({tabCounts.active})
             </button>
             <button
@@ -605,7 +603,6 @@ const ProjectList: React.FC = () => {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <CheckSquare className="w-4 h-4" />
               ✅ Finalizados ({tabCounts.finished})
             </button>
             <button
@@ -616,12 +613,10 @@ const ProjectList: React.FC = () => {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <Trash2 className="w-4 h-4" />
               🗑️ Excluídos ({tabCounts.deleted})
             </button>
           </div>
 
-          {/* Filters - only show for active tab */}
           {activeTab === 'active' && (
             <div className="flex gap-4 items-center">
               <div className="relative flex-1">
@@ -661,7 +656,6 @@ const ProjectList: React.FC = () => {
             </div>
           )}
 
-          {/* Search for other tabs */}
           {activeTab !== 'active' && (
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -674,7 +668,6 @@ const ProjectList: React.FC = () => {
             </div>
           )}
 
-          {/* Selection controls */}
           {filteredProjects.length > 0 && (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">

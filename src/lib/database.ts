@@ -1,5 +1,5 @@
-
 import { v4 as uuidv4 } from 'uuid';
+import { currencyService } from './currencyService';
 
 export type Project = {
   id: string;
@@ -12,7 +12,7 @@ export type Project = {
   finalValue: number;
   currency: 'BRL' | 'USD' | 'EUR';
   responsible: string;
-  status: 'Pendente' | 'Em Progresso' | 'Concluído' | 'Atrasado';
+  status: 'Pendente' | 'Em Progresso' | 'Concluída' | 'Atrasado';
   priority: 'Alta' | 'Média' | 'Baixa';
   phase: 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento';
   tags: string[];
@@ -20,7 +20,7 @@ export type Project = {
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
-  isFinished: boolean; // Added for Analytics compatibility
+  isFinished: boolean;
 };
 
 export type Task = {
@@ -43,22 +43,21 @@ export type Comment = {
   text: string;
   timestamp: string;
   createdAt: string;
-  userId?: string; // Added for CommentManager compatibility
+  userId?: string;
 };
 
 export type File = {
   id: string;
   projectId: string;
   name: string;
-  filename?: string; // Added for FileManager compatibility
+  filename?: string;
   url: string;
   size: number;
   type: string;
   uploadedAt: string;
-  uploadDate?: string; // Added for FileManager compatibility
+  uploadDate?: string;
 };
 
-// Export ProjectFile as an alias for File to maintain compatibility
 export type ProjectFile = File;
 
 export type HistoryEntry = {
@@ -106,7 +105,29 @@ class DatabaseService {
     localStorage.setItem('database', JSON.stringify(this.db));
   }
 
-  // Project CRUD operations
+  // Função para atualizar automaticamente o progresso do projeto baseado nas tarefas
+  private updateProjectProgress(projectId: string) {
+    try {
+      const tasks = this.getProjectTasks(projectId);
+      const completedTasks = tasks.filter(task => task.status === 'Concluída');
+      const progress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
+      
+      // Atualiza o progresso do projeto
+      const project = this.getProject(projectId);
+      if (project) {
+        this.updateProject(projectId, { 
+          progress,
+          isFinished: progress === 100 || project.status === 'Concluído'
+        });
+        
+        // Adiciona entrada no histórico
+        this.addHistoryEntry(projectId, 'Sistema', `Progresso atualizado automaticamente para ${progress}% (${completedTasks.length}/${tasks.length} tarefas concluídas)`);
+      }
+    } catch (error) {
+      console.error('Error updating project progress:', error);
+    }
+  }
+
   createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'isDeleted' | 'isFinished'>): Project {
     const newProject: Project = {
       id: uuidv4(),
@@ -188,6 +209,10 @@ class DatabaseService {
     };
     this.db.tasks.push(newTask);
     this.saveDatabase();
+    
+    // Atualiza automaticamente o progresso do projeto
+    this.updateProjectProgress(taskData.projectId);
+    
     return newTask;
   }
 
@@ -204,21 +229,33 @@ class DatabaseService {
     if (taskIndex === -1) {
       return null;
     }
-    this.db.tasks[taskIndex] = {
+    
+    const updatedTask = {
       ...this.db.tasks[taskIndex],
       ...updates,
       updatedAt: new Date().toISOString(),
     };
+    this.db.tasks[taskIndex] = updatedTask;
     this.saveDatabase();
+    
+    // Atualiza automaticamente o progresso do projeto
+    this.updateProjectProgress(updatedTask.projectId);
+    
     return this.db.tasks[taskIndex];
   }
 
   deleteTask(id: string): void {
-    this.db.tasks = this.db.tasks.filter((task) => task.id !== id);
-    this.saveDatabase();
+    const task = this.getTask(id);
+    if (task) {
+      const projectId = task.projectId;
+      this.db.tasks = this.db.tasks.filter((task) => task.id !== id);
+      this.saveDatabase();
+      
+      // Atualiza automaticamente o progresso do projeto
+      this.updateProjectProgress(projectId);
+    }
   }
 
-  // Comment CRUD operations
   createComment(commentData: Omit<Comment, 'id' | 'timestamp' | 'createdAt'>): Comment {
     const newComment: Comment = {
       id: uuidv4(),
@@ -253,14 +290,13 @@ class DatabaseService {
     this.saveDatabase();
   }
 
-  // File CRUD operations
   createFile(fileData: Omit<File, 'id' | 'uploadedAt'>): File {
     const newFile: File = {
       id: uuidv4(),
       ...fileData,
-      filename: fileData.filename || fileData.name, // Ensure filename is set
+      filename: fileData.filename || fileData.name,
       uploadedAt: new Date().toISOString(),
-      uploadDate: new Date().toISOString(), // Add uploadDate for compatibility
+      uploadDate: new Date().toISOString(),
     };
     this.db.files.push(newFile);
     this.saveDatabase();
@@ -276,7 +312,6 @@ class DatabaseService {
     this.saveDatabase();
   }
 
-  // History operations
   addHistoryEntry(projectId: string, user: string, action: string): void {
     const newEntry: HistoryEntry = {
       id: uuidv4(),
@@ -293,106 +328,26 @@ class DatabaseService {
     return this.db.history.filter((entry) => entry.projectId === projectId);
   }
 
-  // Utility functions
-  formatCurrency(amount: number, currency: 'BRL' | 'USD' | 'EUR'): string {
+  // Utility functions with real-time currency conversion
+  async formatCurrency(amount: number, currency: 'BRL' | 'USD' | 'EUR'): Promise<string> {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: currency,
     }).format(amount);
   }
 
-  convertCurrency(amount: number, fromCurrency: 'BRL' | 'USD' | 'EUR', toCurrency: 'BRL' | 'USD' | 'EUR'): number {
-    if (fromCurrency === toCurrency) {
-      return amount;
-    }
-
-    const exchangeRates = {
-      BRLtoUSD: 0.20,
-      BRLtoEUR: 0.18,
-      USDtoBRL: 4.95,
-      USDtoEUR: 0.92,
-      EURtoBRL: 5.41,
-      EURtoUSD: 1.09,
-    };
-
-    try {
-      if (fromCurrency === 'BRL' && toCurrency === 'USD') {
-        return amount * exchangeRates.BRLtoUSD;
-      } else if (fromCurrency === 'BRL' && toCurrency === 'EUR') {
-        return amount * exchangeRates.BRLtoEUR;
-      } else if (fromCurrency === 'USD' && toCurrency === 'BRL') {
-        return amount * exchangeRates.USDtoBRL;
-      } else if (fromCurrency === 'USD' && toCurrency === 'EUR') {
-        return amount * exchangeRates.USDtoEUR;
-      } else if (fromCurrency === 'EUR' && toCurrency === 'BRL') {
-        return amount * exchangeRates.EURtoBRL;
-      } else if (fromCurrency === 'EUR' && toCurrency === 'USD') {
-        return amount * exchangeRates.EURtoUSD;
-      } else {
-        console.warn(`Unsupported currency conversion: ${fromCurrency} to ${toCurrency}`);
-        return amount;
-      }
-    } catch (error) {
-      console.error('Currency conversion error:', error);
-      return amount;
-    }
+  async convertCurrency(amount: number, fromCurrency: 'BRL' | 'USD' | 'EUR', toCurrency: 'BRL' | 'USD' | 'EUR'): Promise<number> {
+    return await currencyService.convertCurrency(amount, fromCurrency, toCurrency);
   }
 }
 
 export const db = new DatabaseService();
 
 // Export utility functions
-export const formatCurrency = (amount: number, currency: 'BRL' | 'USD' | 'EUR'): string => {
-  return db.formatCurrency(amount, currency);
+export const formatCurrency = async (amount: number, currency: 'BRL' | 'USD' | 'EUR'): Promise<string> => {
+  return await db.formatCurrency(amount, currency);
 };
 
-export const convertCurrency = (amount: number, fromCurrency: 'BRL' | 'USD' | 'EUR', toCurrency: 'BRL' | 'USD' | 'EUR'): number => {
-  return db.convertCurrency(amount, fromCurrency, toCurrency);
-};
-
-// Update the updateProjectProgress function to calculate based on tasks
-const updateProjectProgress = (projectId: string) => {
-  try {
-    const tasks = db.getProjectTasks(projectId);
-    const completedTasks = tasks.filter(task => task.status === 'Concluída');
-    const progress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
-    
-    // Get current project data
-    const project = db.getProject(projectId);
-    if (project) {
-      db.updateProject(projectId, { 
-        progress,
-        isFinished: progress === 100 || project.status === 'Concluído'
-      });
-      db.addHistoryEntry(projectId, 'system', `Progresso atualizado automaticamente para ${progress}% baseado nas tarefas concluídas (${completedTasks.length}/${tasks.length})`);
-    }
-  } catch (error) {
-    console.error('Error updating project progress:', error);
-  }
-};
-
-// Update createTask function to auto-update progress
-export const createTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-  const task = db.createTask(taskData);
-  updateProjectProgress(taskData.projectId);
-  return task;
-};
-
-// Update updateTask function to auto-update progress
-export const updateTask = (id: string, updates: Partial<Task>) => {
-  const task = db.updateTask(id, updates);
-  if (task) {
-    updateProjectProgress(task.projectId);
-  }
-  return task;
-};
-
-// Update deleteTask function to auto-update progress
-export const deleteTask = (id: string) => {
-  const task = db.getTask(id);
-  if (task) {
-    const projectId = task.projectId;
-    db.deleteTask(id);
-    updateProjectProgress(projectId);
-  }
+export const convertCurrency = async (amount: number, fromCurrency: 'BRL' | 'USD' | 'EUR', toCurrency: 'BRL' | 'USD' | 'EUR'): Promise<number> => {
+  return await db.convertCurrency(amount, fromCurrency, toCurrency);
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CalendarIcon, Plus, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -128,161 +128,250 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Lista de Tarefas</h2>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova tarefa...
-        </Button>
-      </div>
-
-      {showForm && (
-        <div className="rounded-md border bg-card text-card-foreground shadow-sm p-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name" className="text-sm">Nome da Tarefa *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="description" className="text-sm">Descrição</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Descreva a tarefa..."
-                rows={3}
-                className="resize-none text-sm"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="status" className="text-sm">Status</Label>
-                <Select value={formData.status} onValueChange={(value: 'Pendente' | 'Em Progresso' | 'Concluída') => setFormData({ ...formData, status: value })}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pendente">Pendente</SelectItem>
-                    <SelectItem value="Em Progresso">Em Progresso</SelectItem>
-                    <SelectItem value="Concluída">Concluída</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="priority" className="text-sm">Prioridade</Label>
-                <Select value={formData.priority} onValueChange={(value: 'Alta' | 'Média' | 'Baixa') => setFormData({ ...formData, priority: value })}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Alta">Alta</SelectItem>
-                    <SelectItem value="Média">Média</SelectItem>
-                    <SelectItem value="Baixa">Baixa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="assignedTo" className="text-sm">Atribuída a</Label>
-              <Input
-                id="assignedTo"
-                value={formData.assignedTo}
-                onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div>
-              <Label className="text-sm">Data de Vencimento</Label>
-              <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal h-8 text-sm",
-                      !dueDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dueDate ? format(dueDate, "dd/MM/yyyy") : "Selecione a data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-50" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={handleDueDateSelect}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={resetForm} className="h-8 text-sm">
-                Cancelar
+    <TooltipProvider>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Lista de Tarefas</h2>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={() => setShowForm(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova tarefa...
               </Button>
-              <Button type="submit" className="h-8 text-sm">
-                {editingTask ? 'Atualizar' : 'Criar'} Tarefa
-              </Button>
-            </div>
-          </form>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>✨ Adicionar uma nova tarefa ao projeto</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
-      )}
 
-      {tasks.length === 0 ? (
-        <div className="text-center py-4">
-          <p className="text-gray-500 text-sm">Nenhuma tarefa encontrada para este projeto.</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {tasks.map((task) => (
-            <div key={task.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-              <Checkbox
-                checked={task.status === 'Concluída'}
-                onCheckedChange={(checked) => handleTaskStatusChange(task.id, checked as boolean)}
-                className="flex-shrink-0"
-              />
-              <div className="flex-grow">
-                <div className={`font-medium ${task.status === 'Concluída' ? 'line-through text-gray-500' : ''}`}>
-                  {task.name}
+        {showForm && (
+          <div className="rounded-md border bg-card text-card-foreground shadow-sm p-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label htmlFor="name" className="text-sm">Nome da Tarefa *</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>📝 Digite um nome descritivo para a tarefa</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  className="h-8 text-sm"
+                  placeholder="Ex: Implementar funcionalidade X"
+                />
+              </div>
+
+              <div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label htmlFor="description" className="text-sm">Descrição</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>📋 Adicione detalhes sobre o que precisa ser feito</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Descreva a tarefa..."
+                  rows={3}
+                  className="resize-none text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label htmlFor="status" className="text-sm">Status</Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>📊 Selecione o status atual da tarefa</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Select value={formData.status} onValueChange={(value: 'Pendente' | 'Em Progresso' | 'Concluída') => setFormData({ ...formData, status: value })}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pendente">⏳ Pendente</SelectItem>
+                      <SelectItem value="Em Progresso">🔄 Em Progresso</SelectItem>
+                      <SelectItem value="Concluída">✅ Concluída</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                {task.description && (
-                  <div className={`text-sm text-gray-600 ${task.status === 'Concluída' ? 'line-through' : ''}`}>
-                    {task.description}
+                <div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label htmlFor="priority" className="text-sm">Prioridade</Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>🚩 Defina a importância desta tarefa</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Select value={formData.priority} onValueChange={(value: 'Alta' | 'Média' | 'Baixa') => setFormData({ ...formData, priority: value })}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Alta">🔴 Alta</SelectItem>
+                      <SelectItem value="Média">🟡 Média</SelectItem>
+                      <SelectItem value="Baixa">🟢 Baixa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label htmlFor="assignedTo" className="text-sm">Atribuída a</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>👤 Pessoa responsável por executar esta tarefa</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Input
+                  id="assignedTo"
+                  value={formData.assignedTo}
+                  onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+                  className="h-8 text-sm"
+                  placeholder="Nome do responsável"
+                />
+              </div>
+
+              <div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label className="text-sm">Data de Vencimento</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>📅 Defina o prazo limite para conclusão</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-8 text-sm",
+                        !dueDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dueDate ? format(dueDate, "dd/MM/yyyy") : "Selecione a data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-50" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={handleDueDateSelect}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="button" variant="outline" onClick={resetForm} className="h-8 text-sm">
+                      ❌ Cancelar
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Cancelar e fechar o formulário</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="submit" className="h-8 text-sm">
+                      {editingTask ? '✏️ Atualizar' : '➕ Criar'} Tarefa
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{editingTask ? 'Salvar alterações na tarefa' : 'Criar nova tarefa no projeto'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {tasks.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="text-gray-500 text-sm">📝 Nenhuma tarefa encontrada para este projeto.</p>
+            <p className="text-gray-400 text-xs mt-1">🚀 Comece adicionando uma nova tarefa!</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tasks.map((task) => (
+              <div key={task.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Checkbox
+                      checked={task.status === 'Concluída'}
+                      onCheckedChange={(checked) => handleTaskStatusChange(task.id, checked as boolean)}
+                      className="flex-shrink-0"
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{task.status === 'Concluída' ? '✅ Marcar como pendente' : '☑️ Marcar como concluída'}</p>
+                  </TooltipContent>
+                </Tooltip>
+                <div className="flex-grow">
+                  <div className={`font-medium ${task.status === 'Concluída' ? 'line-through text-gray-500' : ''}`}>
+                    {task.name}
                   </div>
-                )}
-                <div className="flex gap-4 text-xs text-gray-500 mt-1">
-                  {task.assignedTo && <span>Atribuída a: {task.assignedTo}</span>}
-                  <span>Prioridade: {task.priority}</span>
-                  {task.dueDate && <span>Vencimento: {format(new Date(task.dueDate), "dd/MM/yyyy")}</span>}
+                  {task.description && (
+                    <div className={`text-sm text-gray-600 ${task.status === 'Concluída' ? 'line-through' : ''}`}>
+                      {task.description}
+                    </div>
+                  )}
+                  <div className="flex gap-4 text-xs text-gray-500 mt-1">
+                    {task.assignedTo && <span>👤 Atribuída a: {task.assignedTo}</span>}
+                    <span>🚩 Prioridade: {task.priority}</span>
+                    {task.dueDate && <span>📅 Vencimento: {format(new Date(task.dueDate), "dd/MM/yyyy")}</span>}
+                  </div>
+                </div>
+                <div className="flex space-x-1 flex-shrink-0">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="sm" onClick={() => handleEditTask(task)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>✏️ Editar esta tarefa</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>🗑️ Excluir esta tarefa</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
-              <div className="flex space-x-1 flex-shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => handleEditTask(task)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </TooltipProvider>
   );
 };
 
