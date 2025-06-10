@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ProjectForm from '../components/ProjectForm';
 import StatusCard from '../components/StatusCard';
-import { Search, Eye, Edit, Download, Plus, Filter, Flag, CheckSquare, X, MoreHorizontal, Archive, Trash2, RotateCcw } from 'lucide-react';
+import { Search, Eye, Edit, Download, Plus, Filter, Flag, CheckSquare, X, MoreHorizontal, Archive, Trash2, RotateCcw, Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 
@@ -27,14 +27,39 @@ const ProjectList: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'deleted'>('active');
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showDeadlineAlert, setShowDeadlineAlert] = useState(false);
 
   useEffect(() => {
     loadProjects();
+    checkDeadlines();
   }, []);
 
   const loadProjects = () => {
     const allProjects = db.getAllProjects();
     setProjects(allProjects);
+  };
+
+  const checkDeadlines = () => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    const activeProjects = db.getActiveProjects();
+    const projectsDueToday = activeProjects.filter(p => p.endDate === todayStr);
+    const overDueProjects = activeProjects.filter(p => p.endDate && p.endDate < todayStr);
+    
+    if (projectsDueToday.length > 0 || overDueProjects.length > 0) {
+      setShowDeadlineAlert(true);
+    }
+  };
+
+  const getProjectsDueToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return db.getActiveProjects().filter(p => p.endDate === today);
+  };
+
+  const getOverdueProjects = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return db.getActiveProjects().filter(p => p.endDate && p.endDate < today);
   };
 
   const calculateProjectProgress = (projectId: string): number => {
@@ -150,42 +175,27 @@ const ProjectList: React.FC = () => {
     }
   };
 
-  const getProgressBarColor = (progress: number) => {
-    if (progress < 30) return 'bg-gradient-to-r from-red-400 to-red-600';
-    if (progress < 70) return 'bg-gradient-to-r from-yellow-400 to-yellow-600';
-    return 'bg-gradient-to-r from-green-400 to-green-600';
-  };
-
-  const handleFinishProject = (project: Project) => {
-    db.updateProject(project.id, { status: 'Concluída' });
+  const handleStatusChange = (project: Project, newStatus: string) => {
+    if (newStatus === 'active') {
+      db.restoreProject(project.id);
+      db.updateProject(project.id, { status: 'Em Progresso' });
+      db.addHistoryEntry(project.id, 'Usuário', 'Projeto restaurado e movido para ativo');
+      setActiveTab('active');
+    } else if (newStatus === 'finished') {
+      db.updateProject(project.id, { status: 'Concluída' });
+      db.addHistoryEntry(project.id, 'Usuário', 'Projeto finalizado');
+      setActiveTab('finished');
+    } else if (newStatus === 'deleted') {
+      db.deleteProject(project.id);
+      db.addHistoryEntry(project.id, 'Usuário', 'Projeto movido para lixeira');
+      setActiveTab('deleted');
+    }
     loadProjects();
-    setActiveTab('finished');
-  };
-
-  const handleDeleteProject = (project: Project) => {
-    db.deleteProject(project.id);
-    loadProjects();
-    setActiveTab('deleted');
   };
 
   const handleEditProject = (project: Project) => {
     setEditingProject(project);
     setIsEditDialogOpen(true);
-  };
-
-  const handleStatusChange = (project: Project, newStatus: string) => {
-    if (newStatus === 'active') {
-      db.restoreProject(project.id);
-      db.updateProject(project.id, { status: 'Em Progresso' });
-      setActiveTab('active');
-    } else if (newStatus === 'finished') {
-      db.updateProject(project.id, { status: 'Concluída' });
-      setActiveTab('finished');
-    } else if (newStatus === 'deleted') {
-      db.deleteProject(project.id);
-      setActiveTab('deleted');
-    }
-    loadProjects();
   };
 
   const handleSelectProject = (projectId: string, checked: boolean) => {
@@ -224,6 +234,7 @@ const ProjectList: React.FC = () => {
       const project = projects.find(p => p.id === projectId);
       if (project) {
         db.deleteProject(project.id);
+        db.addHistoryEntry(project.id, 'Usuário', 'Projeto excluído em lote');
       }
     });
     loadProjects();
@@ -249,149 +260,133 @@ const ProjectList: React.FC = () => {
         pdf.addPage();
       }
 
-      // Enhanced Header with gradient effect simulation
-      pdf.setFillColor(37, 99, 235);
-      pdf.rect(0, 0, 210, 35, 'F');
+      // Header with company branding
+      pdf.setFillColor(52, 144, 220);
+      pdf.rect(0, 0, 210, 30, 'F');
       
       pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(22);
-      pdf.text('PRESTIGE COSMÉTICOS', 20, 18);
+      pdf.setFontSize(20);
+      pdf.text('PRESTIGE COSMÉTICOS', 20, 15);
       
-      pdf.setFontSize(12);
-      pdf.text('RELATÓRIO EXECUTIVO DETALHADO', 20, 28);
+      pdf.setFontSize(14);
+      pdf.text('RELATÓRIO EXECUTIVO DE PROJETO', 20, 25);
       
-      // Timestamp and author
+      // Date and responsible
       const now = new Date();
       const dateStr = now.toLocaleDateString('pt-BR');
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      pdf.setFontSize(9);
-      pdf.text(`Gerado: ${dateStr} ${timeStr} | Por: Danilo Araujo | Página ${projectIndex + 1}/${projectsData.length}`, 20, 33);
+      pdf.setFontSize(10);
+      pdf.text(`Gerado em: ${dateStr}, ${timeStr} | Responsável: Danilo Araujo`, 20, 35);
 
-      // Project Header Section
+      // Project Title
       pdf.setTextColor(0, 0, 0);
-      pdf.setFillColor(248, 250, 252);
-      pdf.rect(15, 40, 180, 25, 'F');
-      pdf.rect(15, 40, 180, 25);
-      
       pdf.setFontSize(16);
       pdf.text(project.name, 20, 50);
       
+      // Project Details Section
+      pdf.rect(15, 55, 180, 45);
+      
       pdf.setFontSize(10);
-      pdf.text(`Cliente: ${project.client}`, 20, 58);
-      pdf.text(`Status: ${project.status} | Prioridade: ${project.priority}`, 120, 58);
-
-      // KPI Section
-      let yPos = 75;
-      pdf.setFontSize(14);
-      pdf.text('INDICADORES CHAVE (KPIs)', 20, yPos);
+      let yPos = 65;
       
-      pdf.rect(15, yPos + 5, 180, 40);
+      pdf.text(`Cliente: ${project.client}`, 20, yPos);
+      pdf.text(`Status: ${project.status}`, 120, yPos);
       
+      yPos += 8;
+      pdf.text(`Responsável: ${project.responsible}`, 20, yPos);
+      pdf.text(`Prioridade: ${project.priority}`, 120, yPos);
+      
+      yPos += 8;
+      pdf.text(`Data Início: ${project.startDate || 'N/A'}`, 20, yPos);
+      pdf.text(`Previsão Fim: ${project.endDate || 'N/A'}`, 120, yPos);
+      
+      yPos += 8;
       const progress = calculateProjectProgress(project.id);
+      pdf.text(`Progresso: ${progress}%`, 20, yPos);
+      pdf.text(`Fase: ${project.phase}`, 120, yPos);
+
+      if (project.teamMembers) {
+        yPos += 8;
+        pdf.text(`Envolvidos: ${project.teamMembers}`, 20, yPos);
+      }
+
+      // Financial Section
+      yPos = 110;
+      pdf.setFontSize(12);
+      pdf.text('RESUMO FINANCEIRO', 20, yPos);
+      
+      pdf.rect(15, yPos + 5, 180, 25);
+      
+      pdf.setFontSize(10);
+      yPos += 15;
+      pdf.text(`Valor Estimado: ${formatCurrency(project.estimatedValue, project.currency)}`, 20, yPos);
+      pdf.text(`Valor Final: ${formatCurrency(project.finalValue, project.currency)}`, 120, yPos);
+      
+      yPos += 8;
+      const margin = project.finalValue - project.estimatedValue;
+      pdf.text(`Margem: ${formatCurrency(margin, project.currency)}`, 20, yPos);
+      pdf.text(`Moeda: ${project.currency}`, 120, yPos);
+
+      // Performance Metrics
+      yPos = 150;
+      pdf.setFontSize(12);
+      pdf.text('MÉTRICAS DE PERFORMANCE', 20, yPos);
+      
+      pdf.rect(15, yPos + 5, 180, 25);
+      
+      pdf.setFontSize(10);
+      yPos += 15;
+      
       const tasks = db.getProjectTasks(project.id);
       const completedTasks = tasks.filter(t => t.status === 'Concluída').length;
-      const onTimeRate = project.status !== 'Atrasado' ? 100 : 0;
-      const budgetVariance = ((project.finalValue - project.estimatedValue) / project.estimatedValue * 100).toFixed(1);
+      const totalTasks = tasks.length;
+      const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
       
-      pdf.setFontSize(10);
-      yPos += 15;
-      
-      // KPI Grid
-      pdf.text(`Progresso: ${progress}%`, 20, yPos);
-      pdf.text(`Orçamento: ${budgetVariance}%`, 70, yPos);
-      pdf.text(`Qualidade: 85%`, 120, yPos);
-      pdf.text(`Prazo: ${onTimeRate}%`, 170, yPos);
+      pdf.text(`Taxa de Conclusão: ${taskCompletionRate}%`, 20, yPos);
+      pdf.text(`Tarefas: ${completedTasks}/${totalTasks}`, 120, yPos);
       
       yPos += 8;
-      pdf.text(`Tarefas: ${completedTasks}/${tasks.length}`, 20, yPos);
-      pdf.text(`ROI: ${(project.finalValue/project.estimatedValue*100-100).toFixed(1)}%`, 70, yPos);
-      pdf.text(`Riscos: ${db.getProjectRisks(project.id).length}`, 120, yPos);
-      
       const daysInProgress = project.startDate ? 
         Math.floor((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-      pdf.text(`Duração: ${daysInProgress}d`, 170, yPos);
+      pdf.text(`Dias em Execução: ${daysInProgress}`, 20, yPos);
       
-      yPos += 8;
-      pdf.text(`Velocidade: ${(progress/Math.max(daysInProgress,1)).toFixed(1)}%/dia`, 20, yPos);
-      pdf.text(`Eficiência: ${Math.round(completedTasks/Math.max(daysInProgress,1)*7)}t/sem`, 70, yPos);
+      const progressPerDay = daysInProgress > 0 ? (progress / daysInProgress).toFixed(2) : '0';
+      pdf.text(`Velocidade: ${progressPerDay}%/dia`, 120, yPos);
 
-      // Financial Analysis
-      yPos = 125;
-      pdf.setFontSize(12);
-      pdf.text('ANÁLISE FINANCEIRA', 20, yPos);
-      
-      pdf.rect(15, yPos + 5, 88, 35);
-      pdf.rect(107, yPos + 5, 88, 35);
-      
-      pdf.setFontSize(10);
-      yPos += 15;
-      
-      // Left column - Budget
-      pdf.text('ORÇAMENTO', 20, yPos);
-      pdf.text(`Estimado: ${formatCurrency(project.estimatedValue, project.currency)}`, 20, yPos + 8);
-      pdf.text(`Executado: ${formatCurrency(project.finalValue, project.currency)}`, 20, yPos + 16);
-      pdf.text(`Variação: ${formatCurrency(project.finalValue - project.estimatedValue, project.currency)}`, 20, yPos + 24);
-      
-      // Right column - Performance
-      pdf.text('PERFORMANCE', 112, yPos);
-      pdf.text(`Custo/Progresso: ${(project.finalValue/(progress || 1)).toFixed(0)}`, 112, yPos + 8);
-      pdf.text(`Valor Entregue: ${((progress/100) * project.finalValue).toFixed(0)}`, 112, yPos + 16);
-      pdf.text(`Projeção Final: ${(project.finalValue/(progress/100 || 1)).toFixed(0)}`, 112, yPos + 24);
-
-      // Progress Visualization
-      yPos = 170;
-      pdf.text('PROGRESSO VISUAL', 20, yPos);
-      
-      // Progress bar
-      pdf.setFillColor(229, 231, 235);
-      pdf.rect(20, yPos + 5, 100, 8, 'F');
-      
-      const progressWidth = (progress / 100) * 100;
-      if (progress < 30) pdf.setFillColor(239, 68, 68);
-      else if (progress < 70) pdf.setFillColor(245, 158, 11);
-      else pdf.setFillColor(34, 197, 94);
-      
-      pdf.rect(20, yPos + 5, progressWidth, 8, 'F');
-      pdf.text(`${progress}%`, 130, yPos + 11);
-
-      // Team and Resources
-      yPos = 185;
-      if (project.teamMembers) {
-        pdf.setFontSize(10);
-        pdf.text('EQUIPE ENVOLVIDA', 20, yPos);
-        const teamLines = pdf.splitTextToSize(project.teamMembers, 170);
-        pdf.text(teamLines.slice(0, 2), 20, yPos + 8);
-        yPos += 20;
-      }
-
-      // Risks Summary
-      const risks = db.getProjectRisks(project.id);
-      if (risks.length > 0) {
-        pdf.text('RISCOS IDENTIFICADOS', 20, yPos);
-        const activeRisks = risks.filter(r => r.status === 'Ativo').length;
-        const mitigatedRisks = risks.filter(r => r.status === 'Mitigado').length;
-        pdf.text(`Total: ${risks.length} | Ativos: ${activeRisks} | Mitigados: ${mitigatedRisks}`, 20, yPos + 8);
-        yPos += 20;
-      }
-
-      // Project Description
-      if (project.description && yPos < 250) {
+      // Description
+      if (project.description) {
+        yPos = 185;
+        pdf.setFontSize(12);
         pdf.text('DESCRIÇÃO', 20, yPos);
-        const descLines = pdf.splitTextToSize(project.description, 170);
-        pdf.text(descLines.slice(0, 3), 20, yPos + 8);
-        yPos += 25;
+        
+        pdf.setFontSize(9);
+        const descriptionLines = pdf.splitTextToSize(project.description, 170);
+        pdf.text(descriptionLines.slice(0, 4), 20, yPos + 10);
+        yPos += Math.min(descriptionLines.length, 4) * 4 + 15;
       }
 
-      // Footer with additional metrics
-      pdf.setFontSize(8);
-      pdf.setTextColor(128, 128, 128);
-      pdf.text(`Moeda: ${project.currency} | Fase: ${project.phase} | Responsável: ${project.responsible}`, 20, 285);
+      // Tags
       if (project.tags.length > 0) {
-        pdf.text(`Tags: ${project.tags.join(', ')}`, 20, 290);
+        if (yPos > 240) {
+          pdf.addPage();
+          yPos = 20;
+        }
+        
+        pdf.setFontSize(12);
+        pdf.text('TAGS', 20, yPos);
+        
+        pdf.setFontSize(9);
+        pdf.text(project.tags.join(', '), 20, yPos + 10);
       }
     });
 
-    pdf.save(`relatorio-detalhado-${new Date().toISOString().split('T')[0]}.pdf`);
+    pdf.save(`relatorio-projetos-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const getProgressBarColor = (progress: number) => {
+    if (progress < 30) return 'bg-red-500';
+    if (progress < 70) return 'bg-yellow-500';
+    return 'bg-green-500';
   };
 
   const tabCounts = getTabCounts();
@@ -402,10 +397,64 @@ const ProjectList: React.FC = () => {
     <TooltipProvider>
       <Layout>
         <div className="space-y-6">
-          {/* Header with simplified title styling */}
+          {/* Deadline Alert */}
+          {showDeadlineAlert && (
+            <AlertDialog open={showDeadlineAlert} onOpenChange={setShowDeadlineAlert}>
+              <AlertDialogContent className="max-w-lg">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                    <Bell className="h-5 w-5" />
+                    Alertas de Prazo
+                  </AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-4">
+                      {getProjectsDueToday().length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 font-medium text-orange-600 mb-2">
+                            📅 Vencem Hoje ({getProjectsDueToday().length})
+                          </div>
+                          {getProjectsDueToday().map(project => (
+                            <div key={project.id} className="bg-orange-50 p-3 rounded border">
+                              <div className="font-medium">{project.name}</div>
+                              <div className="text-sm text-gray-600">Cliente: {project.client}</div>
+                              <div className="text-xs text-orange-600 mt-1">Hoje</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {getOverdueProjects().length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 font-medium text-red-600 mb-2">
+                            ⚠️ Atrasados ({getOverdueProjects().length})
+                          </div>
+                          {getOverdueProjects().map(project => (
+                            <div key={project.id} className="bg-red-50 p-3 rounded border">
+                              <div className="font-medium">{project.name}</div>
+                              <div className="text-sm text-gray-600">Cliente: {project.client}</div>
+                              <div className="text-xs text-red-600 mt-1">
+                                Venceu em: {new Date(project.endDate).toLocaleDateString('pt-BR')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogAction onClick={() => setShowDeadlineAlert(false)}>
+                    Entendi
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+
+          {/* Header */}
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-2xl text-foreground font-normal">🚀 Gerencie todos os seus projetos em um só lugar</p>
+              <p className="text-2xl text-foreground">🚀 Gerencie todos os seus projetos em um só lugar</p>
             </div>
             
             <Tooltip>
@@ -486,25 +535,99 @@ const ProjectList: React.FC = () => {
                 </Button>
                 {activeTab === 'active' && (
                   <>
-                    <Button size="sm" variant="outline" onClick={() => bulkChangeStatus('finished')}>
-                      <CheckSquare className="h-4 w-4 mr-1" />
-                      Finalizar
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={bulkDeleteProjects}>
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Excluir
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <CheckSquare className="h-4 w-4 mr-1" />
+                          Finalizar
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar Finalização</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja finalizar {selectedProjects.length} projeto(s)? Esta ação moverá os projetos para a aba de finalizados.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => bulkChangeStatus('finished')}>
+                            Finalizar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir {selectedProjects.length} projeto(s)? Os projetos serão movidos para a lixeira.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={bulkDeleteProjects} className="bg-red-600 hover:bg-red-700">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </>
                 )}
                 {activeTab === 'finished' && (
-                  <Button size="sm" variant="outline" onClick={() => bulkChangeStatus('active')}>
-                    Reativar
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Reativar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar Reativação</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja reativar {selectedProjects.length} projeto(s)?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => bulkChangeStatus('active')}>
+                          Reativar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
                 {activeTab === 'deleted' && (
-                  <Button size="sm" variant="outline" onClick={() => bulkChangeStatus('active')}>
-                    Restaurar
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Restaurar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar Restauração</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja restaurar {selectedProjects.length} projeto(s)?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => bulkChangeStatus('active')}>
+                          Restaurar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
                 <Button size="sm" variant="ghost" onClick={clearSelection}>
                   <X className="h-4 w-4" />
@@ -513,7 +636,7 @@ const ProjectList: React.FC = () => {
             </div>
           )}
 
-          {/* Tabs with extended width */}
+          {/* Tabs */}
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'finished' | 'deleted')} className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-12">
               <TabsTrigger value="active" className="flex items-center gap-2 flex-1 justify-center">
@@ -551,7 +674,7 @@ const ProjectList: React.FC = () => {
                   {/* Projects Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredProjects.map((project) => (
-                      <div key={project.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-all duration-200">
+                      <div key={project.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3 flex-1">
                             <Checkbox
@@ -608,7 +731,7 @@ const ProjectList: React.FC = () => {
                                         <MoreHorizontal className="h-3 w-3" />
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="bg-white border shadow-lg">
+                                    <DropdownMenuContent align="end">
                                       {activeTab === 'active' && (
                                         <>
                                           <AlertDialog>
@@ -731,7 +854,7 @@ const ProjectList: React.FC = () => {
                                   {project.tags.slice(0, 3).map((tag, index) => (
                                     <span
                                       key={index}
-                                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
+                                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs"
                                     >
                                       {tag}
                                     </span>
@@ -766,16 +889,14 @@ const ProjectList: React.FC = () => {
 
                           <div>
                             <div className="flex justify-between text-sm mb-2">
-                              <span className="font-medium text-gray-700">Progresso</span>
-                              <span className="font-bold text-gray-900">{project.progress}%</span>
+                              <span className="font-medium">Progresso</span>
+                              <span className="font-bold">{project.progress}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner border">
+                            <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
                               <div 
-                                className={`h-4 rounded-full transition-all duration-700 shadow-md ${getProgressBarColor(project.progress)}`}
+                                className={`h-3 rounded-full transition-all duration-500 ${getProgressBarColor(project.progress)} shadow-sm`}
                                 style={{ width: `${project.progress}%` }}
-                              >
-                                <div className="h-full rounded-full bg-white bg-opacity-20"></div>
-                              </div>
+                              ></div>
                             </div>
                           </div>
 

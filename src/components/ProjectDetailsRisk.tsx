@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import RiskManager from './RiskManager';
-import ProjectHistory from './ProjectHistory';
 
 interface ProjectDetailsRiskProps {
   projectId: string;
@@ -18,11 +16,15 @@ const ProjectDetailsRisk: React.FC<ProjectDetailsRiskProps> = ({ projectId }) =>
         </TabsList>
         
         <TabsContent value="risks" className="mt-6">
-          <RiskManager projectId={projectId} />
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Sistema de riscos em desenvolvimento</p>
+          </div>
         </TabsContent>
         
         <TabsContent value="history" className="mt-6">
-          <ProjectHistory projectId={projectId} />
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Sistema de histórico em desenvolvimento</p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -25,6 +25,8 @@ import TaskManager from '../components/TaskManager';
 import CommentManager from '../components/CommentManager';
 import FileManager from '../components/FileManager';
 import ProjectForm from '../components/ProjectForm';
+import RiskManager from '../components/RiskManager';
+import ProjectHistory from '../components/ProjectHistory';
 import jsPDF from 'jspdf';
 
 const ProjectDetails: React.FC = () => {
@@ -50,6 +52,18 @@ const ProjectDetails: React.FC = () => {
         setFiles(db.getProjectFiles(id));
       }
     }
+  };
+
+  const calculateProjectProgress = () => {
+    if (tasks.length === 0) return 0;
+    const completedTasks = tasks.filter(task => task.status === 'Concluída').length;
+    return Math.round((completedTasks / tasks.length) * 100);
+  };
+
+  const getProgressBarColor = (progress: number) => {
+    if (progress < 30) return 'bg-red-500';
+    if (progress < 70) return 'bg-yellow-500';
+    return 'bg-green-500';
   };
 
   const handleEditProject = () => {
@@ -136,7 +150,7 @@ const ProjectDetails: React.FC = () => {
     doc.setFont('helvetica', 'bold');
     doc.text('Progresso:', rightColumn, rightY);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${project.progress}%`, rightColumn + 30, rightY);
+    doc.text(`${calculateProjectProgress()}%`, rightColumn + 30, rightY);
     rightY += lineHeight;
 
     doc.setFont('helvetica', 'bold');
@@ -146,9 +160,9 @@ const ProjectDetails: React.FC = () => {
     rightY += lineHeight;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Fim:', rightColumn, rightY);
+    doc.text('Previsão Fim:', rightColumn, rightY);
     doc.setFont('helvetica', 'normal');
-    doc.text(project.endDate || 'N/A', rightColumn + 20, rightY);
+    doc.text(project.endDate || 'N/A', rightColumn + 35, rightY);
     rightY += lineHeight;
 
     currentY = Math.max(leftY, rightY) + 8;
@@ -186,7 +200,7 @@ const ProjectDetails: React.FC = () => {
     doc.text(`Dias em Execução: ${daysInProgress} dias`, margin + 5, currentY);
     currentY += lineHeight;
     
-    const progressPerDay = daysInProgress > 0 ? (project.progress / daysInProgress).toFixed(2) : '0';
+    const progressPerDay = daysInProgress > 0 ? (calculateProjectProgress() / daysInProgress).toFixed(2) : '0';
     doc.text(`Progresso Médio/Dia: ${progressPerDay}%`, margin + 5, currentY);
     currentY += 8;
 
@@ -333,6 +347,8 @@ const ProjectDetails: React.FC = () => {
     );
   }
 
+  const currentProgress = calculateProjectProgress();
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -413,8 +429,13 @@ const ProjectDetails: React.FC = () => {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{project.progress}%</div>
-              <Progress value={project.progress} className="mt-2" />
+              <div className="text-2xl font-bold mb-2">{currentProgress}%</div>
+              <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
+                <div 
+                  className={`h-3 rounded-full transition-all duration-500 ${getProgressBarColor(currentProgress)} shadow-sm`}
+                  style={{ width: `${currentProgress}%` }}
+                ></div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -463,11 +484,18 @@ const ProjectDetails: React.FC = () => {
                   <div>
                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      Data de Fim
+                      Previsão de Conclusão
                     </h4>
                     <span className="text-muted-foreground">{project.endDate || 'Não definida'}</span>
                   </div>
                 </div>
+
+                {project.teamMembers && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Envolvidos no Projeto</h4>
+                    <p className="text-muted-foreground">{project.teamMembers}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -495,12 +523,14 @@ const ProjectDetails: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs for Tasks, Comments, Files */}
+        {/* Tabs for Tasks, Comments, Files, Risks, History */}
         <Tabs defaultValue="tasks" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="tasks">Tarefas ({tasks.length})</TabsTrigger>
             <TabsTrigger value="comments">Comentários ({comments.length})</TabsTrigger>
             <TabsTrigger value="files">Arquivos ({files.length})</TabsTrigger>
+            <TabsTrigger value="risks">Riscos</TabsTrigger>
+            <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks" className="space-y-4">
@@ -513,6 +543,14 @@ const ProjectDetails: React.FC = () => {
 
           <TabsContent value="files" className="space-y-4">
             <FileManager projectId={project.id} />
+          </TabsContent>
+
+          <TabsContent value="risks" className="space-y-4">
+            <RiskManager projectId={project.id} />
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4">
+            <ProjectHistory projectId={project.id} />
           </TabsContent>
         </Tabs>
 
