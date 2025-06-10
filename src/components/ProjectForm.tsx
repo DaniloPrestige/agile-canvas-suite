@@ -25,6 +25,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit, onCanc
     name: initialData?.name || '',
     client: initialData?.client || '',
     responsible: initialData?.responsible || '',
+    teamMembers: initialData?.teamMembers || '',
     priority: initialData?.priority || 'Média' as const,
     status: initialData?.status || 'Pendente' as const,
     phase: initialData?.phase || 'Iniciação' as const,
@@ -132,22 +133,41 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit, onCanc
               </div>
             </div>
 
-            <div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Label htmlFor="responsible" className="text-sm cursor-help">Responsável *</Label>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Pessoa responsável por gerenciar este projeto</p>
-                </TooltipContent>
-              </Tooltip>
-              <Input
-                id="responsible"
-                value={formData.responsible}
-                onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
-                required
-                className="h-8 text-sm"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label htmlFor="responsible" className="text-sm cursor-help">Responsável *</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Pessoa responsável por gerenciar este projeto</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Input
+                  id="responsible"
+                  value={formData.responsible}
+                  onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
+                  required
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label htmlFor="teamMembers" className="text-sm cursor-help">Gestão de Pessoas</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Pessoas envolvidas no projeto (opcional)</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Input
+                  id="teamMembers"
+                  value={formData.teamMembers}
+                  onChange={(e) => setFormData({ ...formData, teamMembers: e.target.value })}
+                  placeholder="Ex: João, Maria, Pedro"
+                  className="h-8 text-sm"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">

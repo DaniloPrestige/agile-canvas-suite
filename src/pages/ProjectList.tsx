@@ -59,7 +59,8 @@ const ProjectList: React.FC = () => {
       filtered = filtered.filter(project =>
         project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         project.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.responsible.toLowerCase().includes(searchTerm.toLowerCase())
+        project.responsible.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -297,36 +298,17 @@ const ProjectList: React.FC = () => {
       pdf.setFontSize(12);
       pdf.text(`${index + 1}. ${project.name}`, 20, yPos);
       
-      pdf.rect(15, yPos + 5, 180, 25);
+      pdf.rect(15, yPos + 5, 180, 35);
       
       pdf.setFontSize(10);
       pdf.text(`Cliente: ${project.client} | Responsável: ${project.responsible}`, 20, yPos + 15);
       pdf.text(`Status: ${project.status} | Prioridade: ${project.priority} | Progresso: ${calculateProjectProgress(project.id)}%`, 20, yPos + 25);
       
-      yPos += 40;
+      if (project.teamMembers) {
+        pdf.text(`Equipe: ${project.teamMembers}`, 20, yPos + 35);
+      }
       
-      pdf.text('DETALHES DO PROJETO', 20, yPos);
-      yPos += 10;
-      
-      pdf.text(`Início: ${project.startDate || 'Não definido'}`, 20, yPos);
-      pdf.text(`Fim Previsto: ${project.endDate || 'Não definido'}`, 120, yPos);
-      
-      yPos += 8;
-      pdf.text(`Fase: ${project.phase || 'Não definido'}`, 20, yPos);
-      pdf.text(`Valor: R$ ${(project.finalValue || project.estimatedValue).toFixed(2)}`, 120, yPos);
-      
-      yPos += 8;
-      const progressPercent = calculateProjectProgress(project.id);
-      pdf.text(`Progresso:`, 20, yPos);
-      
-      // Progress bar
-      pdf.setFillColor(200, 200, 200);
-      pdf.rect(60, yPos - 3, 50, 4, 'F');
-      pdf.setFillColor(52, 144, 220);
-      pdf.rect(60, yPos - 3, (50 * progressPercent) / 100, 4, 'F');
-      pdf.text(`${progressPercent}%`, 115, yPos);
-      
-      yPos += 20;
+      yPos += 50;
     });
 
     pdf.save('relatorio-executivo-projetos.pdf');
@@ -375,7 +357,7 @@ const ProjectList: React.FC = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar projetos..."
+                  placeholder="Buscar projetos por nome, cliente, responsável ou tags..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -451,7 +433,7 @@ const ProjectList: React.FC = () => {
             </div>
           )}
 
-          {/* Tabs */}
+          {/* Tabs with extended width */}
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'finished' | 'deleted')} className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-12">
               <TabsTrigger value="active" className="flex items-center gap-2 flex-1 justify-center">
@@ -497,83 +479,104 @@ const ProjectList: React.FC = () => {
                               onCheckedChange={(checked) => handleSelectProject(project.id, checked as boolean)}
                             />
                             <div className="flex-1">
-                              <Link 
-                                to={`/project/${project.id}`}
-                                className="font-semibold text-lg text-gray-900 hover:text-blue-600 cursor-pointer transition-colors mr-2"
-                              >
-                                {project.name}
-                              </Link>
-                              
-                              {/* Action Buttons next to project name */}
-                              <div className="inline-flex gap-1 ml-2">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => window.location.href = `/project/${project.id}`}
-                                      className="h-6 w-6 p-0"
-                                    >
-                                      <Eye className="h-3 w-3" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Ver Detalhes</p>
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => handleEditProject(project)}
-                                      className="h-6 w-6 p-0"
-                                    >
-                                      <Edit className="h-3 w-3" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Editar</p>
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                {activeTab === 'active' && (
+                              <div className="flex items-center gap-2 mb-2">
+                                <Link 
+                                  to={`/project/${project.id}`}
+                                  className="font-semibold text-lg text-gray-900 hover:text-blue-600 cursor-pointer transition-colors"
+                                >
+                                  {project.name}
+                                </Link>
+                                
+                                {/* Action Buttons next to project name */}
+                                <div className="flex gap-1">
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button 
                                         variant="ghost" 
                                         size="sm"
-                                        onClick={() => handleFinishProject(project)}
+                                        onClick={() => window.location.href = `/project/${project.id}`}
                                         className="h-6 w-6 p-0"
                                       >
-                                        <CheckSquare className="h-3 w-3" />
+                                        <Eye className="h-3 w-3" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Finalizar</p>
+                                      <p>Ver Detalhes</p>
                                     </TooltipContent>
                                   </Tooltip>
-                                )}
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => handleDeleteProject(project)}
-                                      className="h-6 w-6 p-0"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Excluir</p>
-                                  </TooltipContent>
-                                </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => handleEditProject(project)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Editar</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+
+                                  {activeTab === 'active' && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => handleFinishProject(project)}
+                                          className="h-6 w-6 p-0"
+                                        >
+                                          <CheckSquare className="h-3 w-3" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Finalizar</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => handleDeleteProject(project)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Excluir</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
                               </div>
                               
-                              <p className="text-sm text-gray-600 mt-1">{project.client}</p>
+                              <p className="text-sm text-gray-600 mb-1">{project.client}</p>
+                              
+                              {/* Tags */}
+                              {project.tags && project.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  {project.tags.slice(0, 3).map((tag, index) => (
+                                    <span
+                                      key={index}
+                                      className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                  {project.tags.length > 3 && (
+                                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+                                      +{project.tags.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -625,10 +628,11 @@ const ProjectList: React.FC = () => {
             <DialogTitle>Criar Novo Projeto</DialogTitle>
           </DialogHeader>
           <ProjectForm
-            onClose={() => {
+            onSubmit={() => {
               setIsCreateDialogOpen(false);
               loadProjects();
             }}
+            onCancel={() => setIsCreateDialogOpen(false)}
           />
         </DialogContent>
       </Dialog>
@@ -647,11 +651,16 @@ const ProjectList: React.FC = () => {
           {editingProject && (
             <ProjectForm
               initialData={editingProject}
-              onClose={() => {
+              onSubmit={() => {
                 setIsEditDialogOpen(false);
                 setEditingProject(null);
                 loadProjects();
               }}
+              onCancel={() => {
+                setIsEditDialogOpen(false);
+                setEditingProject(null);
+              }}
+              isEditing={true}
             />
           )}
         </DialogContent>

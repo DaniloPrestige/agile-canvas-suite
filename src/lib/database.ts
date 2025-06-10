@@ -12,6 +12,7 @@ export type Project = {
   finalValue: number;
   currency: 'BRL' | 'USD' | 'EUR';
   responsible: string;
+  teamMembers?: string;
   status: 'Pendente' | 'Em Progresso' | 'Concluída' | 'Atrasado';
   priority: 'Alta' | 'Média' | 'Baixa';
   phase: 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento';
