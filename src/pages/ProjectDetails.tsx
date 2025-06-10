@@ -18,9 +18,13 @@ import {
   Edit,
   Trash2,
   CheckSquare,
-  Building
+  Building,
+  AlertTriangle,
+  Shield,
+  TrendingDown
 } from 'lucide-react';
 import { db, Project, Task, Comment, ProjectFile, formatCurrency } from '../lib/database';
+import { historyService } from '../lib/historyService';
 import TaskManager from '../components/TaskManager';
 import CommentManager from '../components/CommentManager';
 import FileManager from '../components/FileManager';
@@ -71,8 +75,21 @@ const ProjectDetails: React.FC = () => {
   };
 
   const handleProjectUpdate = () => {
+    const oldProject = project;
     loadProjectData();
     setIsEditDialogOpen(false);
+    
+    if (id && oldProject) {
+      historyService.addEntry(
+        id,
+        'Projeto editado e atualizado',
+        'Usuário do Sistema',
+        { 
+          previousData: oldProject,
+          timestamp: new Date().toISOString()
+        }
+      );
+    }
   };
 
   const handleCancelEdit = () => {
@@ -92,7 +109,11 @@ const ProjectDetails: React.FC = () => {
     // Header
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Relatório do Projeto', margin, currentY);
+    doc.text('PRESTIGE COSMÉTICOS', margin, currentY);
+    currentY += 10;
+    
+    doc.setFontSize(14);
+    doc.text('RELATÓRIO EXECUTIVO DE PROJETO', margin, currentY);
     currentY += 15;
 
     doc.setFontSize(10);
@@ -154,9 +175,9 @@ const ProjectDetails: React.FC = () => {
     rightY += lineHeight;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Início:', rightColumn, rightY);
+    doc.text('Data Início:', rightColumn, rightY);
     doc.setFont('helvetica', 'normal');
-    doc.text(project.startDate || 'N/A', rightColumn + 20, rightY);
+    doc.text(project.startDate || 'N/A', rightColumn + 30, rightY);
     rightY += lineHeight;
 
     doc.setFont('helvetica', 'bold');
@@ -167,143 +188,180 @@ const ProjectDetails: React.FC = () => {
 
     currentY = Math.max(leftY, rightY) + 8;
 
-    // Financial Information
-    if (project.estimatedValue > 0 || project.finalValue > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Informações Financeiras:', margin, currentY);
-      currentY += lineHeight;
-      
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Valor Estimado: ${formatCurrency(project.estimatedValue, project.currency)}`, margin + 5, currentY);
-      currentY += lineHeight;
-      doc.text(`Valor Final: ${formatCurrency(project.finalValue, project.currency)}`, margin + 5, currentY);
-      currentY += 8;
-    }
-
-    // Project Performance Metrics
-    const allProjects = db.getAllProjects().filter(p => !p.isDeleted);
-    const activeProjects = allProjects.filter(p => p.status !== 'Concluída');
-    const onTimeProjects = activeProjects.filter(p => p.status !== 'Atrasado').length;
-    const totalActiveProjects = activeProjects.length;
-    const onTimeRate = totalActiveProjects > 0 ? Math.round((onTimeProjects / totalActiveProjects) * 100) : 0;
-    
+    // Financial Section
     doc.setFont('helvetica', 'bold');
-    doc.text('Indicadores de Performance:', margin, currentY);
-    currentY += lineHeight;
-    
+    doc.setFontSize(12);
+    doc.text('RESUMO FINANCEIRO', margin, currentY);
+    currentY += 8;
+
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Taxa de Atendimento do Prazo: ${onTimeRate}%`, margin + 5, currentY);
-    currentY += lineHeight;
+    
+    leftY = currentY;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Valor Estimado:', margin, leftY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(formatCurrency(project.estimatedValue, project.currency), margin + 35, leftY);
+    leftY += lineHeight;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Margem:', margin, leftY);
+    doc.setFont('helvetica', 'normal');
+    const margin_value = project.estimatedValue - project.finalValue;
+    doc.text(formatCurrency(margin_value, project.currency), margin + 25, leftY);
+    leftY += lineHeight;
+
+    rightY = currentY;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Valor Final:', rightColumn, rightY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(formatCurrency(project.finalValue, project.currency), rightColumn + 25, rightY);
+    rightY += lineHeight;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Moeda:', rightColumn, rightY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(project.currency, rightColumn + 20, rightY);
+    rightY += lineHeight;
+
+    currentY = Math.max(leftY, rightY) + 8;
+
+    // Performance Metrics
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('MÉTRICAS DE PERFORMANCE', margin, currentY);
+    currentY += 8;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    
+    const completedTasks = tasks.filter(t => t.status === 'Concluída').length;
+    const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+    
+    leftY = currentY;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Taxa de Conclusão:', margin, leftY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${completionRate}%`, margin + 45, leftY);
+    leftY += lineHeight;
     
     const daysInProgress = project.startDate ? 
       Math.floor((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-    doc.text(`Dias em Execução: ${daysInProgress} dias`, margin + 5, currentY);
-    currentY += lineHeight;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dias em Execução:', margin, leftY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${daysInProgress}`, margin + 45, leftY);
+    leftY += lineHeight;
     
-    const progressPerDay = daysInProgress > 0 ? (calculateProjectProgress() / daysInProgress).toFixed(2) : '0';
-    doc.text(`Progresso Médio/Dia: ${progressPerDay}%`, margin + 5, currentY);
-    currentY += 8;
+    rightY = currentY;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tarefas:', rightColumn, rightY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${completedTasks}/${tasks.length}`, rightColumn + 25, rightY);
+    rightY += lineHeight;
+    
+    const progressPerDay = daysInProgress > 0 ? (calculateProjectProgress() / daysInProgress).toFixed(1) : '0';
+    doc.setFont('helvetica', 'bold');
+    doc.text('Velocidade:', rightColumn, rightY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${progressPerDay}%/dia`, rightColumn + 25, rightY);
+    rightY += lineHeight;
+
+    currentY = Math.max(leftY, rightY) + 8;
 
     // Description
-    if (project.description) {
+    if (project.description && currentY < pageHeight - 50) {
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
       doc.text('Descrição:', margin, currentY);
       currentY += lineHeight;
       
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
       const descriptionLines = doc.splitTextToSize(project.description, pageWidth - 2 * margin);
-      doc.text(descriptionLines.slice(0, 3), margin + 5, currentY);
-      currentY += Math.min(descriptionLines.length, 3) * lineHeight + 8;
+      doc.text(descriptionLines.slice(0, 4), margin, currentY);
+      currentY += Math.min(descriptionLines.length, 4) * lineHeight + 5;
     }
 
-    // Tasks
-    if (tasks.length > 0) {
+    // Tasks with completion status
+    if (tasks.length > 0 && currentY < pageHeight - 40) {
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
       doc.text('Tarefas:', margin, currentY);
       currentY += lineHeight;
       
       doc.setFont('helvetica', 'normal');
-      const completedTasks = tasks.filter(t => t.status === 'Concluída').length;
-      doc.text(`Total: ${tasks.length} | Concluídas: ${completedTasks} | Pendentes: ${tasks.length - completedTasks}`, margin + 5, currentY);
-      currentY += lineHeight + 2;
+      doc.setFontSize(8);
       
-      tasks.slice(0, 6).forEach(task => {
-        const status = task.status === 'Concluída' ? '[x]' : '[  ]';
-        const taskText = `${status} ${task.name}`;
-        const taskLines = doc.splitTextToSize(taskText, pageWidth - 2 * margin - 10);
-        
-        if (currentY + taskLines.length * lineHeight > pageHeight - 40) {
-          return;
-        }
-        
-        doc.text(taskLines, margin + 5, currentY);
-        currentY += taskLines.length * lineHeight;
-      });
+      const completedTasksList = tasks.filter(t => t.status === 'Concluída').slice(0, 3);
+      const pendingTasksList = tasks.filter(t => t.status !== 'Concluída').slice(0, 3);
       
-      if (tasks.length > 6) {
-        doc.text(`... e mais ${tasks.length - 6} tarefas`, margin + 5, currentY);
-        currentY += lineHeight;
-      }
-      currentY += 5;
-    }
-
-    // Comments Summary
-    if (comments.length > 0 && currentY < pageHeight - 35) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Comentários:', margin, currentY);
-      currentY += lineHeight;
-      
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Total de comentários: ${comments.length}`, margin + 5, currentY);
-      currentY += lineHeight;
-      
-      comments.slice(0, 2).forEach(comment => {
-        if (currentY > pageHeight - 30) return;
-        
+      if (completedTasksList.length > 0) {
         doc.setFont('helvetica', 'bold');
-        doc.text(`${comment.author}:`, margin + 5, currentY);
+        doc.text('Concluídas:', margin, currentY);
+        currentY += 3;
         doc.setFont('helvetica', 'normal');
         
-        const commentLines = doc.splitTextToSize(comment.text, pageWidth - 2 * margin - 10);
-        doc.text(commentLines.slice(0, 1), margin + 5, currentY + lineHeight);
-        currentY += lineHeight + 3;
-      });
-      currentY += 3;
-    }
-
-    // Files
-    if (files.length > 0 && currentY < pageHeight - 25) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Arquivos:', margin, currentY);
-      currentY += lineHeight;
+        completedTasksList.forEach(task => {
+          if (currentY > pageHeight - 25) return;
+          doc.text(`✓ ${task.name}`, margin + 5, currentY);
+          currentY += 3;
+        });
+        currentY += 2;
+      }
       
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Total de arquivos: ${files.length}`, margin + 5, currentY);
-      currentY += lineHeight;
-      
-      files.slice(0, 3).forEach(file => {
-        if (currentY > pageHeight - 20) return;
-        doc.text(`• ${file.name}`, margin + 5, currentY);
-        currentY += lineHeight;
-      });
-      
-      if (files.length > 3) {
-        doc.text(`... e mais ${files.length - 3} arquivos`, margin + 5, currentY);
+      if (pendingTasksList.length > 0 && currentY < pageHeight - 20) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Pendentes:', margin, currentY);
+        currentY += 3;
+        doc.setFont('helvetica', 'normal');
+        
+        pendingTasksList.forEach(task => {
+          if (currentY > pageHeight - 15) return;
+          doc.text(`○ ${task.name}`, margin + 5, currentY);
+          currentY += 3;
+        });
       }
     }
 
     doc.save(`projeto-${project.name.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
+    
+    if (id) {
+      historyService.addEntry(
+        id,
+        'Relatório PDF gerado e baixado',
+        'Usuário do Sistema'
+      );
+    }
   };
 
   const handleFinishProject = () => {
     if (project) {
       db.updateProject(project.id, { status: 'Concluída' });
       setProject({ ...project, status: 'Concluída' });
+      
+      historyService.addEntry(
+        project.id,
+        'Projeto finalizado com sucesso',
+        'Usuário do Sistema',
+        { 
+          previousStatus: project.status,
+          newStatus: 'Concluída',
+          finishedAt: new Date().toISOString()
+        }
+      );
     }
   };
 
   const handleDeleteProject = () => {
     if (project && window.confirm('Tem certeza que deseja excluir este projeto?')) {
+      historyService.addEntry(
+        project.id,
+        'Projeto marcado para exclusão',
+        'Usuário do Sistema',
+        { deletedProject: project }
+      );
+      
       db.deleteProject(project.id);
       window.location.href = '/';
     }
@@ -337,6 +395,44 @@ const ProjectDetails: React.FC = () => {
     }
   };
 
+  // Mock data para riscos - em produção viria do banco de dados
+  const getMockRisks = () => {
+    return [
+      {
+        id: '1',
+        name: 'Atraso na entrega',
+        impact: 'Alto',
+        probability: 'Média',
+        status: 'Ativo'
+      },
+      {
+        id: '2', 
+        name: 'Mudança de escopo',
+        impact: 'Médio',
+        probability: 'Alta',
+        status: 'Mitigado'
+      }
+    ];
+  };
+
+  const getRiskStatusColor = (status: string) => {
+    switch (status) {
+      case 'Ativo': return 'bg-red-100 text-red-800';
+      case 'Mitigado': return 'bg-green-100 text-green-800';
+      case 'Ocorrido': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getRiskImpactColor = (impact: string) => {
+    switch (impact) {
+      case 'Alto': return 'text-red-600';
+      case 'Médio': return 'text-yellow-600';
+      case 'Baixo': return 'text-green-600';
+      default: return 'text-gray-600';
+    }
+  };
+
   if (!project) {
     return (
       <Layout>
@@ -348,6 +444,7 @@ const ProjectDetails: React.FC = () => {
   }
 
   const currentProgress = calculateProjectProgress();
+  const mockRisks = getMockRisks();
 
   return (
     <Layout>
@@ -488,6 +585,55 @@ const ProjectDetails: React.FC = () => {
                     </h4>
                     <span className="text-muted-foreground">{project.endDate || 'Não definida'}</span>
                   </div>
+                </div>
+
+                {/* Nova Seção de Riscos */}
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600" />
+                    Riscos do Projeto
+                  </h4>
+                  {mockRisks.length > 0 ? (
+                    <div className="space-y-2">
+                      {mockRisks.map((risk) => (
+                        <div key={risk.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1">
+                              {risk.status === 'Ativo' ? (
+                                <AlertTriangle className="w-4 h-4 text-red-500" />
+                              ) : risk.status === 'Mitigado' ? (
+                                <Shield className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <TrendingDown className="w-4 h-4 text-orange-500" />
+                              )}
+                              <span className="font-medium text-sm">{risk.name}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              <span className={getRiskImpactColor(risk.impact)}>
+                                {risk.impact}
+                              </span>
+                            </Badge>
+                            <Badge className={getRiskStatusColor(risk.status)} variant="secondary">
+                              {risk.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500">
+                          {mockRisks.filter(r => r.status === 'Ativo').length} risco(s) ativo(s) • 
+                          {mockRisks.filter(r => r.status === 'Mitigado').length} mitigado(s)
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      <Shield className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                      <p className="text-sm">Nenhum risco identificado</p>
+                    </div>
+                  )}
                 </div>
 
                 {project.teamMembers && (
