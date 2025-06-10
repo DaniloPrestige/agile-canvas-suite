@@ -34,9 +34,9 @@ const RiskManager: React.FC<RiskManagerProps> = ({ projectId }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    impact: 'Médio' as const,
-    probability: 'Média' as const,
-    status: 'Ativo' as const,
+    impact: 'Médio' as 'Baixo' | 'Médio' | 'Alto',
+    probability: 'Média' as 'Baixa' | 'Média' | 'Alta',
+    status: 'Ativo' as 'Ativo' | 'Mitigado' | 'Ocorrido',
     mitigation: ''
   });
 
@@ -62,9 +62,9 @@ const RiskManager: React.FC<RiskManagerProps> = ({ projectId }) => {
     setFormData({
       name: '',
       description: '',
-      impact: 'Médio',
-      probability: 'Média',
-      status: 'Ativo',
+      impact: 'Médio' as 'Baixo' | 'Médio' | 'Alto',
+      probability: 'Média' as 'Baixa' | 'Média' | 'Alta',
+      status: 'Ativo' as 'Ativo' | 'Mitigado' | 'Ocorrido',
       mitigation: ''
     });
     setIsAddingRisk(false);
@@ -221,9 +221,9 @@ const RiskManager: React.FC<RiskManagerProps> = ({ projectId }) => {
                     setFormData({
                       name: '',
                       description: '',
-                      impact: 'Médio',
-                      probability: 'Média',
-                      status: 'Ativo',
+                      impact: 'Médio' as 'Baixo' | 'Médio' | 'Alto',
+                      probability: 'Média' as 'Baixa' | 'Média' | 'Alta',
+                      status: 'Ativo' as 'Ativo' | 'Mitigado' | 'Ocorrido',
                       mitigation: ''
                     });
                   }}
