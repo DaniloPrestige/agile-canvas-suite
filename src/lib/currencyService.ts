@@ -28,27 +28,38 @@ class CurrencyService {
     }
 
     try {
-      // Usando API gratuita do exchangerate-api.com
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
+      // Usando API alternativa mais confiável
+      const response = await fetch('https://api.fxratesapi.com/latest?base=USD&symbols=BRL,EUR', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
       
-      if (data && data.rates) {
-        this.exchangeRates = {
-          USD: 1,
-          BRL: data.rates.BRL || 5.0,
-          EUR: data.rates.EUR || 0.85
-        };
-        this.lastUpdate = now;
-        console.log('Taxas de câmbio atualizadas:', this.exchangeRates);
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data && data.rates) {
+          this.exchangeRates = {
+            USD: 1,
+            BRL: data.rates.BRL || 5.0,
+            EUR: data.rates.EUR || 0.85
+          };
+          this.lastUpdate = now;
+          console.log('Taxas de câmbio atualizadas:', this.exchangeRates);
+        }
+      } else {
+        throw new Error('API response not ok');
       }
     } catch (error) {
       console.warn('Erro ao buscar taxas de câmbio, usando valores padrão:', error);
-      // Valores padrão em caso de erro
+      // Valores padrão atualizados
       this.exchangeRates = {
         USD: 1,
-        BRL: 5.0,
-        EUR: 0.85
+        BRL: 5.2,
+        EUR: 0.92
       };
+      this.lastUpdate = now;
     }
 
     return this.exchangeRates;
@@ -61,13 +72,18 @@ class CurrencyService {
 
     const rates = await this.getExchangeRates();
     
-    // Converte primeiro para USD como base
-    const amountInUSD = fromCurrency === 'USD' ? amount : amount / rates[fromCurrency];
-    
-    // Depois converte de USD para a moeda de destino
-    const convertedAmount = toCurrency === 'USD' ? amountInUSD : amountInUSD * rates[toCurrency];
-    
-    return Math.round(convertedAmount * 100) / 100; // Arredonda para 2 casas decimais
+    try {
+      // Converte primeiro para USD como base
+      const amountInUSD = fromCurrency === 'USD' ? amount : amount / rates[fromCurrency];
+      
+      // Depois converte de USD para a moeda de destino
+      const convertedAmount = toCurrency === 'USD' ? amountInUSD : amountInUSD * rates[toCurrency];
+      
+      return Math.round(convertedAmount * 100) / 100; // Arredonda para 2 casas decimais
+    } catch (error) {
+      console.error('Erro na conversão de moedas:', error);
+      return amount; // Retorna o valor original em caso de erro
+    }
   }
 }
 

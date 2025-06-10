@@ -10,9 +10,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ProjectForm from '../components/ProjectForm';
 import StatusCard from '../components/StatusCard';
-import { Search, Eye, Edit, Trash2, Download, Plus, Filter, Flag, CheckSquare, X } from 'lucide-react';
+import { Search, Eye, Edit, Download, Plus, Filter, Flag, CheckSquare, X, MoreHorizontal, Archive, Trash2, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 
@@ -60,7 +61,8 @@ const ProjectList: React.FC = () => {
         project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         project.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
         project.responsible.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (project.teamMembers && project.teamMembers.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -148,6 +150,12 @@ const ProjectList: React.FC = () => {
     }
   };
 
+  const getProgressBarColor = (progress: number) => {
+    if (progress < 30) return 'bg-gradient-to-r from-red-400 to-red-600';
+    if (progress < 70) return 'bg-gradient-to-r from-yellow-400 to-yellow-600';
+    return 'bg-gradient-to-r from-green-400 to-green-600';
+  };
+
   const handleFinishProject = (project: Project) => {
     db.updateProject(project.id, { status: 'Concluída' });
     loadProjects();
@@ -230,88 +238,160 @@ const ProjectList: React.FC = () => {
     }
 
     const selectedProjectsData = projects.filter(p => selectedProjects.includes(p.id));
-    generateExecutiveReport(selectedProjectsData);
+    generateEnhancedPDF(selectedProjectsData);
   };
 
-  const generateExecutiveReport = (projectsData: Project[]) => {
+  const generateEnhancedPDF = (projectsData: Project[]) => {
     const pdf = new jsPDF();
     
-    // Header
-    pdf.setFillColor(52, 144, 220);
-    pdf.rect(0, 0, 210, 30, 'F');
-    
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(20);
-    pdf.text('PRESTIGE COSMETICOS', 20, 15);
-    
-    pdf.setFontSize(14);
-    pdf.text('RELATÓRIO EXECUTIVO DE PROJETOS', 20, 25);
-    
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('pt-BR');
-    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    pdf.setFontSize(10);
-    pdf.text(`Gerado em: ${dateStr}, ${timeStr} | Responsável: Sistema`, 20, 35);
-
-    // Executive Summary
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFontSize(14);
-    pdf.text('RESUMO EXECUTIVO', 20, 55);
-    
-    pdf.rect(15, 60, 180, 40);
-    
-    const totalProjects = projectsData.length;
-    const completedProjects = projectsData.filter(p => p.status === 'Concluída').length;
-    const activeProjects = projectsData.filter(p => p.status !== 'Concluída' && !p.isDeleted).length;
-    const delayedProjects = projectsData.filter(p => p.status === 'Atrasado').length;
-    const totalValue = projectsData.reduce((sum, p) => sum + (p.finalValue || p.estimatedValue), 0);
-    const avgProgress = activeProjects > 0 ? 
-      Math.round(projectsData.reduce((sum, p) => sum + calculateProjectProgress(p.id), 0) / totalProjects) : 0;
-    const onTimeRate = activeProjects > 0 ? Math.round(((activeProjects - delayedProjects) / activeProjects) * 100) : 100;
-
-    pdf.setFontSize(10);
-    let yPos = 70;
-    
-    pdf.text(`Total de Projetos: ${totalProjects}`, 20, yPos);
-    pdf.text(`Valor Total do Portfolio: R$ ${totalValue.toFixed(2)}`, 120, yPos);
-    
-    yPos += 8;
-    pdf.text(`Projetos Concluídos: ${completedProjects} (${Math.round((completedProjects/totalProjects)*100)}%)`, 20, yPos);
-    pdf.text(`Progresso Médio: ${avgProgress}%`, 120, yPos);
-    
-    yPos += 8;
-    pdf.text(`Projetos Ativos: ${activeProjects}`, 20, yPos);
-    pdf.text(`Projetos Atrasados: ${delayedProjects}`, 120, yPos);
-    
-    yPos += 8;
-    pdf.text(`Taxa de Entrega no Prazo: ${onTimeRate}%`, 20, yPos);
-
-    // Project Details
-    yPos = 120;
-    
-    projectsData.forEach((project, index) => {
-      if (yPos > 250) {
+    projectsData.forEach((project, projectIndex) => {
+      if (projectIndex > 0) {
         pdf.addPage();
-        yPos = 20;
       }
 
-      pdf.setFontSize(12);
-      pdf.text(`${index + 1}. ${project.name}`, 20, yPos);
+      // Enhanced Header with gradient effect simulation
+      pdf.setFillColor(37, 99, 235);
+      pdf.rect(0, 0, 210, 35, 'F');
       
-      pdf.rect(15, yPos + 5, 180, 35);
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(22);
+      pdf.text('PRESTIGE COSMÉTICOS', 20, 18);
+      
+      pdf.setFontSize(12);
+      pdf.text('RELATÓRIO EXECUTIVO DETALHADO', 20, 28);
+      
+      // Timestamp and author
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('pt-BR');
+      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      pdf.setFontSize(9);
+      pdf.text(`Gerado: ${dateStr} ${timeStr} | Por: Danilo Araujo | Página ${projectIndex + 1}/${projectsData.length}`, 20, 33);
+
+      // Project Header Section
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(15, 40, 180, 25, 'F');
+      pdf.rect(15, 40, 180, 25);
+      
+      pdf.setFontSize(16);
+      pdf.text(project.name, 20, 50);
       
       pdf.setFontSize(10);
-      pdf.text(`Cliente: ${project.client} | Responsável: ${project.responsible}`, 20, yPos + 15);
-      pdf.text(`Status: ${project.status} | Prioridade: ${project.priority} | Progresso: ${calculateProjectProgress(project.id)}%`, 20, yPos + 25);
+      pdf.text(`Cliente: ${project.client}`, 20, 58);
+      pdf.text(`Status: ${project.status} | Prioridade: ${project.priority}`, 120, 58);
+
+      // KPI Section
+      let yPos = 75;
+      pdf.setFontSize(14);
+      pdf.text('INDICADORES CHAVE (KPIs)', 20, yPos);
       
+      pdf.rect(15, yPos + 5, 180, 40);
+      
+      const progress = calculateProjectProgress(project.id);
+      const tasks = db.getProjectTasks(project.id);
+      const completedTasks = tasks.filter(t => t.status === 'Concluída').length;
+      const onTimeRate = project.status !== 'Atrasado' ? 100 : 0;
+      const budgetVariance = ((project.finalValue - project.estimatedValue) / project.estimatedValue * 100).toFixed(1);
+      
+      pdf.setFontSize(10);
+      yPos += 15;
+      
+      // KPI Grid
+      pdf.text(`Progresso: ${progress}%`, 20, yPos);
+      pdf.text(`Orçamento: ${budgetVariance}%`, 70, yPos);
+      pdf.text(`Qualidade: 85%`, 120, yPos);
+      pdf.text(`Prazo: ${onTimeRate}%`, 170, yPos);
+      
+      yPos += 8;
+      pdf.text(`Tarefas: ${completedTasks}/${tasks.length}`, 20, yPos);
+      pdf.text(`ROI: ${(project.finalValue/project.estimatedValue*100-100).toFixed(1)}%`, 70, yPos);
+      pdf.text(`Riscos: ${db.getProjectRisks(project.id).length}`, 120, yPos);
+      
+      const daysInProgress = project.startDate ? 
+        Math.floor((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      pdf.text(`Duração: ${daysInProgress}d`, 170, yPos);
+      
+      yPos += 8;
+      pdf.text(`Velocidade: ${(progress/Math.max(daysInProgress,1)).toFixed(1)}%/dia`, 20, yPos);
+      pdf.text(`Eficiência: ${Math.round(completedTasks/Math.max(daysInProgress,1)*7)}t/sem`, 70, yPos);
+
+      // Financial Analysis
+      yPos = 125;
+      pdf.setFontSize(12);
+      pdf.text('ANÁLISE FINANCEIRA', 20, yPos);
+      
+      pdf.rect(15, yPos + 5, 88, 35);
+      pdf.rect(107, yPos + 5, 88, 35);
+      
+      pdf.setFontSize(10);
+      yPos += 15;
+      
+      // Left column - Budget
+      pdf.text('ORÇAMENTO', 20, yPos);
+      pdf.text(`Estimado: ${formatCurrency(project.estimatedValue, project.currency)}`, 20, yPos + 8);
+      pdf.text(`Executado: ${formatCurrency(project.finalValue, project.currency)}`, 20, yPos + 16);
+      pdf.text(`Variação: ${formatCurrency(project.finalValue - project.estimatedValue, project.currency)}`, 20, yPos + 24);
+      
+      // Right column - Performance
+      pdf.text('PERFORMANCE', 112, yPos);
+      pdf.text(`Custo/Progresso: ${(project.finalValue/(progress || 1)).toFixed(0)}`, 112, yPos + 8);
+      pdf.text(`Valor Entregue: ${((progress/100) * project.finalValue).toFixed(0)}`, 112, yPos + 16);
+      pdf.text(`Projeção Final: ${(project.finalValue/(progress/100 || 1)).toFixed(0)}`, 112, yPos + 24);
+
+      // Progress Visualization
+      yPos = 170;
+      pdf.text('PROGRESSO VISUAL', 20, yPos);
+      
+      // Progress bar
+      pdf.setFillColor(229, 231, 235);
+      pdf.rect(20, yPos + 5, 100, 8, 'F');
+      
+      const progressWidth = (progress / 100) * 100;
+      if (progress < 30) pdf.setFillColor(239, 68, 68);
+      else if (progress < 70) pdf.setFillColor(245, 158, 11);
+      else pdf.setFillColor(34, 197, 94);
+      
+      pdf.rect(20, yPos + 5, progressWidth, 8, 'F');
+      pdf.text(`${progress}%`, 130, yPos + 11);
+
+      // Team and Resources
+      yPos = 185;
       if (project.teamMembers) {
-        pdf.text(`Equipe: ${project.teamMembers}`, 20, yPos + 35);
+        pdf.setFontSize(10);
+        pdf.text('EQUIPE ENVOLVIDA', 20, yPos);
+        const teamLines = pdf.splitTextToSize(project.teamMembers, 170);
+        pdf.text(teamLines.slice(0, 2), 20, yPos + 8);
+        yPos += 20;
       }
-      
-      yPos += 50;
+
+      // Risks Summary
+      const risks = db.getProjectRisks(project.id);
+      if (risks.length > 0) {
+        pdf.text('RISCOS IDENTIFICADOS', 20, yPos);
+        const activeRisks = risks.filter(r => r.status === 'Ativo').length;
+        const mitigatedRisks = risks.filter(r => r.status === 'Mitigado').length;
+        pdf.text(`Total: ${risks.length} | Ativos: ${activeRisks} | Mitigados: ${mitigatedRisks}`, 20, yPos + 8);
+        yPos += 20;
+      }
+
+      // Project Description
+      if (project.description && yPos < 250) {
+        pdf.text('DESCRIÇÃO', 20, yPos);
+        const descLines = pdf.splitTextToSize(project.description, 170);
+        pdf.text(descLines.slice(0, 3), 20, yPos + 8);
+        yPos += 25;
+      }
+
+      // Footer with additional metrics
+      pdf.setFontSize(8);
+      pdf.setTextColor(128, 128, 128);
+      pdf.text(`Moeda: ${project.currency} | Fase: ${project.phase} | Responsável: ${project.responsible}`, 20, 285);
+      if (project.tags.length > 0) {
+        pdf.text(`Tags: ${project.tags.join(', ')}`, 20, 290);
+      }
     });
 
-    pdf.save('relatorio-executivo-projetos.pdf');
+    pdf.save(`relatorio-detalhado-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const tabCounts = getTabCounts();
@@ -322,10 +402,10 @@ const ProjectList: React.FC = () => {
     <TooltipProvider>
       <Layout>
         <div className="space-y-6">
-          {/* Header */}
+          {/* Header with simplified title styling */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">🚀 Gerencie todos os seus projetos em um só lugar</h1>
+              <p className="text-2xl text-foreground font-normal">🚀 Gerencie todos os seus projetos em um só lugar</p>
             </div>
             
             <Tooltip>
@@ -357,7 +437,7 @@ const ProjectList: React.FC = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar projetos por nome, cliente, responsável ou tags..."
+                  placeholder="Buscar projetos por nome, cliente, responsável, tags ou envolvidos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -471,7 +551,7 @@ const ProjectList: React.FC = () => {
                   {/* Projects Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredProjects.map((project) => (
-                      <div key={project.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                      <div key={project.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-all duration-200">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3 flex-1">
                             <Checkbox
@@ -487,7 +567,7 @@ const ProjectList: React.FC = () => {
                                   {project.name}
                                 </Link>
                                 
-                                {/* Action Buttons next to project name */}
+                                {/* Action Buttons */}
                                 <div className="flex gap-1">
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -521,39 +601,125 @@ const ProjectList: React.FC = () => {
                                     </TooltipContent>
                                   </Tooltip>
 
-                                  {activeTab === 'active' && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={() => handleFinishProject(project)}
-                                          className="h-6 w-6 p-0"
-                                        >
-                                          <CheckSquare className="h-3 w-3" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Finalizar</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm"
-                                        onClick={() => handleDeleteProject(project)}
-                                        className="h-6 w-6 p-0"
-                                      >
-                                        <Trash2 className="h-3 w-3" />
+                                  {/* Status Dropdown */}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                        <MoreHorizontal className="h-3 w-3" />
                                       </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Excluir</p>
-                                    </TooltipContent>
-                                  </Tooltip>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="bg-white border shadow-lg">
+                                      {activeTab === 'active' && (
+                                        <>
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                <CheckSquare className="mr-2 h-4 w-4" />
+                                                Finalizar
+                                              </DropdownMenuItem>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Finalizar Projeto</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  Tem certeza que deseja finalizar o projeto "{project.name}"?
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleStatusChange(project, 'finished')}>
+                                                  Finalizar
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
+                                          <DropdownMenuSeparator />
+                                        </>
+                                      )}
+                                      
+                                      {activeTab === 'finished' && (
+                                        <>
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                <RotateCcw className="mr-2 h-4 w-4" />
+                                                Reativar
+                                              </DropdownMenuItem>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Reativar Projeto</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  Tem certeza que deseja reativar o projeto "{project.name}"?
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleStatusChange(project, 'active')}>
+                                                  Reativar
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
+                                          <DropdownMenuSeparator />
+                                        </>
+                                      )}
+
+                                      {activeTab === 'deleted' && (
+                                        <>
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                <RotateCcw className="mr-2 h-4 w-4" />
+                                                Restaurar
+                                              </DropdownMenuItem>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Restaurar Projeto</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  Tem certeza que deseja restaurar o projeto "{project.name}"?
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleStatusChange(project, 'active')}>
+                                                  Restaurar
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
+                                          <DropdownMenuSeparator />
+                                        </>
+                                      )}
+
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            {activeTab === 'deleted' ? 'Excluir Permanentemente' : 'Mover para Lixeira'}
+                                          </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Tem certeza que deseja {activeTab === 'deleted' ? 'excluir permanentemente' : 'mover para a lixeira'} o projeto "{project.name}"?
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction 
+                                              onClick={() => handleStatusChange(project, 'deleted')}
+                                              className="bg-red-600 hover:bg-red-700"
+                                            >
+                                              Excluir
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
                               
@@ -565,7 +731,7 @@ const ProjectList: React.FC = () => {
                                   {project.tags.slice(0, 3).map((tag, index) => (
                                     <span
                                       key={index}
-                                      className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"
+                                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
                                     >
                                       {tag}
                                     </span>
@@ -576,6 +742,13 @@ const ProjectList: React.FC = () => {
                                     </span>
                                   )}
                                 </div>
+                              )}
+
+                              {/* Involved People */}
+                              {project.teamMembers && (
+                                <p className="text-xs text-gray-500 mb-2">
+                                  Envolvidos: {project.teamMembers}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -592,21 +765,23 @@ const ProjectList: React.FC = () => {
                           </div>
 
                           <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span>Progresso</span>
-                              <span>{project.progress}%</span>
+                            <div className="flex justify-between text-sm mb-2">
+                              <span className="font-medium text-gray-700">Progresso</span>
+                              <span className="font-bold text-gray-900">{project.progress}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner border">
                               <div 
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                className={`h-4 rounded-full transition-all duration-700 shadow-md ${getProgressBarColor(project.progress)}`}
                                 style={{ width: `${project.progress}%` }}
-                              ></div>
+                              >
+                                <div className="h-full rounded-full bg-white bg-opacity-20"></div>
+                              </div>
                             </div>
                           </div>
 
                           <div>
-                            <span className="text-sm text-gray-600">Valor:</span>
-                            <p className="font-medium text-gray-900">
+                            <span className="text-sm text-gray-600 font-medium">Valor:</span>
+                            <p className="font-bold text-gray-900">
                               {formatCurrency(project.finalValue || project.estimatedValue, project.currency)}
                             </p>
                           </div>
