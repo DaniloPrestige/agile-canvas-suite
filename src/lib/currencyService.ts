@@ -24,12 +24,15 @@ class CurrencyService {
     // Se os dados estão em cache e são recentes, retorna o cache
     if (this.exchangeRates && Object.keys(this.exchangeRates).length > 0 && 
         (now - this.lastUpdate) < this.CACHE_DURATION) {
+      console.log('Usando taxas de câmbio do cache:', this.exchangeRates);
       return this.exchangeRates;
     }
 
+    console.log('Buscando novas taxas de câmbio...');
+
     try {
-      // Usando API alternativa mais confiável
-      const response = await fetch('https://api.fxratesapi.com/latest?base=USD&symbols=BRL,EUR', {
+      // Usando API gratuita e confiável
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -38,6 +41,7 @@ class CurrencyService {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Resposta da API de câmbio:', data);
         
         if (data && data.rates) {
           this.exchangeRates = {
@@ -47,9 +51,11 @@ class CurrencyService {
           };
           this.lastUpdate = now;
           console.log('Taxas de câmbio atualizadas:', this.exchangeRates);
+        } else {
+          throw new Error('Formato de resposta da API inválido');
         }
       } else {
-        throw new Error('API response not ok');
+        throw new Error(`API response status: ${response.status}`);
       }
     } catch (error) {
       console.warn('Erro ao buscar taxas de câmbio, usando valores padrão:', error);
@@ -60,26 +66,36 @@ class CurrencyService {
         EUR: 0.92
       };
       this.lastUpdate = now;
+      console.log('Usando taxas padrão:', this.exchangeRates);
     }
 
     return this.exchangeRates;
   }
 
   async convertCurrency(amount: number, fromCurrency: 'BRL' | 'USD' | 'EUR', toCurrency: 'BRL' | 'USD' | 'EUR'): Promise<number> {
+    console.log(`Convertendo ${amount} de ${fromCurrency} para ${toCurrency}`);
+    
     if (fromCurrency === toCurrency) {
+      console.log('Moedas iguais, retornando valor original');
       return amount;
     }
 
     const rates = await this.getExchangeRates();
+    console.log('Taxas para conversão:', rates);
     
     try {
       // Converte primeiro para USD como base
       const amountInUSD = fromCurrency === 'USD' ? amount : amount / rates[fromCurrency];
+      console.log(`Valor em USD: ${amountInUSD}`);
       
       // Depois converte de USD para a moeda de destino
       const convertedAmount = toCurrency === 'USD' ? amountInUSD : amountInUSD * rates[toCurrency];
+      console.log(`Valor convertido: ${convertedAmount}`);
       
-      return Math.round(convertedAmount * 100) / 100; // Arredonda para 2 casas decimais
+      const finalAmount = Math.round(convertedAmount * 100) / 100; // Arredonda para 2 casas decimais
+      console.log(`Valor final: ${finalAmount}`);
+      
+      return finalAmount;
     } catch (error) {
       console.error('Erro na conversão de moedas:', error);
       return amount; // Retorna o valor original em caso de erro

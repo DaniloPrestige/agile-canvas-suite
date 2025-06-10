@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { db, Project, formatCurrency } from '../lib/database';
+import { currencyService } from '../lib/currencyService';
 import { TrendingUp, TrendingDown, DollarSign, Target, Clock, Users, BarChart3, PieChartIcon, Activity, AlertCircle } from 'lucide-react';
 
 interface Analytics {
@@ -30,52 +31,107 @@ type CurrencyType = 'BRL' | 'USD' | 'EUR';
 const Analytics: React.FC = () => {
   const navigate = useNavigate();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [convertedAnalytics, setConvertedAnalytics] = useState<Analytics | null>(null);
   const [timeRange, setTimeRange] = useState('6months');
   const [currency, setCurrency] = useState<CurrencyType>('BRL');
   const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [conversionError, setConversionError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('Analytics useEffect disparado - carregando dados iniciais');
     loadAnalytics();
-  }, [timeRange, currency]);
+  }, [timeRange]);
 
-  const loadAnalytics = () => {
-    const allProjects = db.getAllProjects().filter(p => !p.isDeleted);
-    setProjects(allProjects);
+  useEffect(() => {
+    console.log('Currency changed to:', currency);
+    if (analytics) {
+      convertAnalyticsData();
+    }
+  }, [currency, analytics]);
 
-    const totalRevenue = allProjects.reduce((sum, p) => sum + (p.finalValue || 0), 0);
-    const totalBudget = allProjects.reduce((sum, p) => sum + (p.estimatedValue || 0), 0);
-    const budgetVariance = totalRevenue - totalBudget;
-    const variancePercentage = totalBudget > 0 ? (budgetVariance / totalBudget) * 100 : 0;
+  const loadAnalytics = async () => {
+    console.log('Carregando analytics...');
+    setIsLoading(true);
+    
+    try {
+      const allProjects = db.getAllProjects().filter(p => !p.isDeleted);
+      console.log('Projetos carregados:', allProjects.length);
+      setProjects(allProjects);
 
-    const completedProjects = allProjects.filter(p => p.status === 'Concluída').length;
-    const activeProjects = allProjects.filter(p => p.status !== 'Concluída').length;
-    const delayedProjects = allProjects.filter(p => p.status === 'Atrasado').length;
-    const onTimeDelivery = activeProjects > 0 ? ((activeProjects - delayedProjects) / activeProjects) * 100 : 100;
+      const totalRevenue = allProjects.reduce((sum, p) => sum + (p.finalValue || 0), 0);
+      const totalBudget = allProjects.reduce((sum, p) => sum + (p.estimatedValue || 0), 0);
+      const budgetVariance = totalRevenue - totalBudget;
+      const variancePercentage = totalBudget > 0 ? (budgetVariance / totalBudget) * 100 : 0;
 
-    // Simplified financial calculations for demonstration
-    const ebitda = totalRevenue * 0.28;
-    const liquidMargin = 15;
-    const cashFlow = totalRevenue * 0.25;
-    const averageROI = 24;
-    const paybackMonths = 18;
-    const npv = totalRevenue * 0.45;
+      const completedProjects = allProjects.filter(p => p.status === 'Concluída').length;
+      const activeProjects = allProjects.filter(p => p.status !== 'Concluída').length;
+      const delayedProjects = allProjects.filter(p => p.status === 'Atrasado').length;
+      const onTimeDelivery = activeProjects > 0 ? ((activeProjects - delayedProjects) / activeProjects) * 100 : 100;
 
-    setAnalytics({
-      totalRevenue,
-      totalBudget,
-      budgetVariance,
-      variancePercentage,
-      ebitda,
-      liquidMargin,
-      cashFlow,
-      averageROI,
-      paybackMonths,
-      npv,
-      completedProjects,
-      activeProjects,
-      delayedProjects,
-      onTimeDelivery
-    });
+      // Simplified financial calculations for demonstration
+      const ebitda = totalRevenue * 0.28;
+      const liquidMargin = 15;
+      const cashFlow = totalRevenue * 0.25;
+      const averageROI = 24;
+      const paybackMonths = 18;
+      const npv = totalRevenue * 0.45;
+
+      const analyticsData = {
+        totalRevenue,
+        totalBudget,
+        budgetVariance,
+        variancePercentage,
+        ebitda,
+        liquidMargin,
+        cashFlow,
+        averageROI,
+        paybackMonths,
+        npv,
+        completedProjects,
+        activeProjects,
+        delayedProjects,
+        onTimeDelivery
+      };
+
+      console.log('Analytics calculados:', analyticsData);
+      setAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Erro ao carregar analytics:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const convertAnalyticsData = async () => {
+    if (!analytics || currency === 'BRL') {
+      console.log('Usando dados originais (BRL ou sem dados)');
+      setConvertedAnalytics(analytics);
+      setConversionError(null);
+      return;
+    }
+
+    console.log('Iniciando conversão de moedas para:', currency);
+    setConversionError(null);
+
+    try {
+      const convertedData = {
+        ...analytics,
+        totalRevenue: await currencyService.convertCurrency(analytics.totalRevenue, 'BRL', currency),
+        totalBudget: await currencyService.convertCurrency(analytics.totalBudget, 'BRL', currency),
+        budgetVariance: await currencyService.convertCurrency(analytics.budgetVariance, 'BRL', currency),
+        ebitda: await currencyService.convertCurrency(analytics.ebitda, 'BRL', currency),
+        cashFlow: await currencyService.convertCurrency(analytics.cashFlow, 'BRL', currency),
+        npv: await currencyService.convertCurrency(analytics.npv, 'BRL', currency),
+      };
+
+      console.log('Dados convertidos:', convertedData);
+      setConvertedAnalytics(convertedData);
+    } catch (error) {
+      console.error('Erro na conversão de moedas:', error);
+      setConversionError('Erro ao converter moedas. Usando valores em BRL.');
+      setConvertedAnalytics(analytics);
+    }
   };
 
   const getVarianceColor = (value: number) => {
@@ -99,7 +155,9 @@ const Analytics: React.FC = () => {
     navigate(`/analytics/${cardType}`);
   };
 
-  if (!analytics) {
+  const displayAnalytics = convertedAnalytics || analytics;
+
+  if (isLoading || !displayAnalytics) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
@@ -110,18 +168,18 @@ const Analytics: React.FC = () => {
   }
 
   const pieData = [
-    { name: 'Concluídos', value: analytics.completedProjects, color: '#10b981' },
-    { name: 'Ativos', value: analytics.activeProjects, color: '#3b82f6' },
-    { name: 'Atrasados', value: analytics.delayedProjects, color: '#ef4444' }
+    { name: 'Concluídos', value: displayAnalytics.completedProjects, color: '#10b981' },
+    { name: 'Ativos', value: displayAnalytics.activeProjects, color: '#3b82f6' },
+    { name: 'Atrasados', value: displayAnalytics.delayedProjects, color: '#ef4444' }
   ];
 
   const revenueData = [
-    { month: 'Jan', revenue: analytics.totalRevenue * 0.15, profit: analytics.totalRevenue * 0.12 },
-    { month: 'Fev', revenue: analytics.totalRevenue * 0.18, profit: analytics.totalRevenue * 0.14 },
-    { month: 'Mar', revenue: analytics.totalRevenue * 0.22, profit: analytics.totalRevenue * 0.18 },
-    { month: 'Abr', revenue: analytics.totalRevenue * 0.20, profit: analytics.totalRevenue * 0.16 },
-    { month: 'Mai', revenue: analytics.totalRevenue * 0.25, profit: analytics.totalRevenue * 0.20 },
-    { month: 'Jun', revenue: analytics.totalRevenue * 0.30, profit: analytics.totalRevenue * 0.24 }
+    { month: 'Jan', revenue: displayAnalytics.totalRevenue * 0.15, profit: displayAnalytics.totalRevenue * 0.12 },
+    { month: 'Fev', revenue: displayAnalytics.totalRevenue * 0.18, profit: displayAnalytics.totalRevenue * 0.14 },
+    { month: 'Mar', revenue: displayAnalytics.totalRevenue * 0.22, profit: displayAnalytics.totalRevenue * 0.18 },
+    { month: 'Abr', revenue: displayAnalytics.totalRevenue * 0.20, profit: displayAnalytics.totalRevenue * 0.16 },
+    { month: 'Mai', revenue: displayAnalytics.totalRevenue * 0.25, profit: displayAnalytics.totalRevenue * 0.20 },
+    { month: 'Jun', revenue: displayAnalytics.totalRevenue * 0.30, profit: displayAnalytics.totalRevenue * 0.24 }
   ];
 
   return (
@@ -136,6 +194,9 @@ const Analytics: React.FC = () => {
                 📊 Analytics
               </h1>
               <p className="text-muted-foreground">📈 Análise detalhada de performance e indicadores financeiros</p>
+              {conversionError && (
+                <p className="text-red-600 text-sm mt-1">⚠️ {conversionError}</p>
+              )}
             </div>
             <div className="flex gap-4">
               <Select value={timeRange} onValueChange={setTimeRange}>
@@ -196,7 +257,7 @@ const Analytics: React.FC = () => {
                 <CardDescription className="text-xs">💰 Receita Total</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-lg font-bold">{formatValue(analytics.totalRevenue)}</div>
+                <div className="text-lg font-bold">{formatValue(displayAnalytics.totalRevenue)}</div>
               </CardContent>
             </Card>
 
@@ -219,7 +280,7 @@ const Analytics: React.FC = () => {
                 <CardDescription className="text-xs">🎯 Orçamento Total</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-lg font-bold">{formatValue(analytics.totalBudget)}</div>
+                <div className="text-lg font-bold">{formatValue(displayAnalytics.totalBudget)}</div>
               </CardContent>
             </Card>
 
@@ -232,7 +293,7 @@ const Analytics: React.FC = () => {
                   <CardTitle className="text-sm font-medium text-muted-foreground">Financeiro</CardTitle>
                   <Tooltip>
                     <TooltipTrigger>
-                      {analytics.budgetVariance >= 0 ? 
+                      {displayAnalytics.budgetVariance >= 0 ? 
                         <TrendingUp className="h-4 w-4 text-green-600" /> : 
                         <TrendingDown className="h-4 w-4 text-red-600" />
                       }
@@ -245,8 +306,8 @@ const Analytics: React.FC = () => {
                 <CardDescription className="text-xs">📈 Variação</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className={`text-lg font-bold ${getVarianceColor(analytics.budgetVariance)}`}>
-                  {analytics.budgetVariance >= 0 ? '+' : ''}{formatValue(analytics.budgetVariance)}
+                <div className={`text-lg font-bold ${getVarianceColor(displayAnalytics.budgetVariance)}`}>
+                  {displayAnalytics.budgetVariance >= 0 ? '+' : ''}{formatValue(displayAnalytics.budgetVariance)}
                 </div>
               </CardContent>
             </Card>
@@ -270,8 +331,8 @@ const Analytics: React.FC = () => {
                 <CardDescription className="text-xs">📊 % Variação</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className={`text-lg font-bold ${getVarianceColor(analytics.variancePercentage)}`}>
-                  {analytics.variancePercentage >= 0 ? '+' : ''}{formatValue(analytics.variancePercentage, 'percentage')}
+                <div className={`text-lg font-bold ${getVarianceColor(displayAnalytics.variancePercentage)}`}>
+                  {displayAnalytics.variancePercentage >= 0 ? '+' : ''}{formatValue(displayAnalytics.variancePercentage, 'percentage')}
                 </div>
               </CardContent>
             </Card>
@@ -295,12 +356,11 @@ const Analytics: React.FC = () => {
                 <CardDescription className="text-xs">⏰ Entrega no Prazo</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-lg font-bold">{formatValue(analytics.onTimeDelivery, 'percentage')}</div>
+                <div className="text-lg font-bold">{formatValue(displayAnalytics.onTimeDelivery, 'percentage')}</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Detailed Financial Metrics - Also Clickable */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <Card 
               className="hover:shadow-md transition-shadow border-l-4 border-l-green-400 cursor-pointer hover:bg-gray-50"
@@ -320,7 +380,7 @@ const Analytics: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-lg font-bold">{formatValue(analytics.ebitda, 'currency')}</div>
+                <div className="text-lg font-bold">{formatValue(displayAnalytics.ebitda, 'currency')}</div>
               </CardContent>
             </Card>
 
@@ -342,7 +402,7 @@ const Analytics: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-lg font-bold">{analytics.liquidMargin}%</div>
+                <div className="text-lg font-bold">{displayAnalytics.liquidMargin}%</div>
               </CardContent>
             </Card>
 
@@ -364,7 +424,7 @@ const Analytics: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-sm font-bold">{formatValue(analytics.cashFlow)}</div>
+                <div className="text-sm font-bold">{formatValue(displayAnalytics.cashFlow)}</div>
               </CardContent>
             </Card>
 
@@ -386,7 +446,7 @@ const Analytics: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-lg font-bold">+{analytics.averageROI}%</div>
+                <div className="text-lg font-bold">+{displayAnalytics.averageROI}%</div>
               </CardContent>
             </Card>
 
@@ -408,7 +468,7 @@ const Analytics: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-sm font-bold">{analytics.paybackMonths} meses</div>
+                <div className="text-sm font-bold">{displayAnalytics.paybackMonths} meses</div>
               </CardContent>
             </Card>
 
@@ -430,7 +490,7 @@ const Analytics: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="text-sm font-bold">{formatValue(analytics.npv)}</div>
+                <div className="text-sm font-bold">{formatValue(displayAnalytics.npv)}</div>
               </CardContent>
             </Card>
           </div>
@@ -469,22 +529,22 @@ const Analytics: React.FC = () => {
               <CardContent>
                 <div className="text-center">
                   <div className="text-4xl font-bold text-green-600 mb-2">
-                    +{analytics.variancePercentage >= 0 ? Math.abs(analytics.variancePercentage).toFixed(0) : Math.abs(analytics.variancePercentage).toFixed(0)}%
+                    +{displayAnalytics.variancePercentage >= 0 ? Math.abs(displayAnalytics.variancePercentage).toFixed(0) : Math.abs(displayAnalytics.variancePercentage).toFixed(0)}%
                   </div>
                   <p className="text-muted-foreground">📈 Lucratividade vs Planejado</p>
                   <div className="mt-4 space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm">💰 Receita Realizada:</span>
-                      <span className="font-semibold">{formatValue(analytics.totalRevenue)}</span>
+                      <span className="font-semibold">{formatValue(displayAnalytics.totalRevenue)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">🎯 Orçamento Planejado:</span>
-                      <span className="font-semibold">{formatValue(analytics.totalBudget)}</span>
+                      <span className="font-semibold">{formatValue(displayAnalytics.totalBudget)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">📊 Variação:</span>
-                      <span className={`font-semibold ${getVarianceColor(analytics.budgetVariance)}`}>
-                        {formatValue(analytics.budgetVariance)}
+                      <span className={`font-semibold ${getVarianceColor(displayAnalytics.budgetVariance)}`}>
+                        {formatValue(displayAnalytics.budgetVariance)}
                       </span>
                     </div>
                   </div>
