@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -16,6 +17,7 @@ import ProjectForm from '../components/ProjectForm';
 import RiskManager from '../components/RiskManager';
 import ProjectHistory from '../components/ProjectHistory';
 import ConfirmationDialog from '../components/ConfirmationDialog';
+import ProgressBar from '../components/ProgressBar';
 import jsPDF from 'jspdf';
 
 const ProjectDetails: React.FC = () => {
@@ -159,15 +161,15 @@ const ProjectDetails: React.FC = () => {
 
     currentY = startY + (projectInfo.length * rowHeight) + 15;
 
-    // Adicionar barra de progresso estilizada
+    // Adicionar barra de progresso menor e estilizada após 'fase'
     const progress = calculateProjectProgress();
     doc.setFont('helvetica', 'bold');
     doc.text(`Progresso: ${progress}%`, margin, currentY);
     currentY += 8;
 
-    // Desenhar barra de progresso estilizada
-    const progressBarWidth = 120;
-    const progressBarHeight = 12;
+    // Desenhar barra de progresso menor
+    const progressBarWidth = 80; // Reduzido de 120 para 80
+    const progressBarHeight = 8; // Reduzido de 12 para 8
     
     // Background da barra com sombra
     doc.setFillColor(220, 220, 220);
@@ -385,6 +387,33 @@ const ProjectDetails: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* Barra de Progresso Estilizada */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Progresso do Projeto
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Progresso</span>
+                <span className="text-sm font-bold">{currentProgress}%</span>
+              </div>
+              <ProgressBar 
+                progress={currentProgress} 
+                showPercentage={false}
+                size="lg"
+                animated={true}
+              />
+              <p className="text-xs text-muted-foreground">
+                {tasks.filter(task => task.status === 'Concluída').length} de {tasks.length} tarefas concluídas
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Project Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
