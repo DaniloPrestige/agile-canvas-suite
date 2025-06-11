@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Plus, Edit, Trash2 } from 'lucide-react';
 import { db } from '../lib/database';
+import { historyService } from '../lib/historyService';
 
 export type Risk = {
   id: string;
@@ -25,9 +26,10 @@ export type Risk = {
 
 interface RiskManagerProps {
   projectId: string;
+  onRiskCountChange?: (count: number) => void;
 }
 
-const RiskManager: React.FC<RiskManagerProps> = ({ projectId }) => {
+const RiskManager: React.FC<RiskManagerProps> = ({ projectId, onRiskCountChange }) => {
   const [risks, setRisks] = useState<Risk[]>([]);
   const [isAddingRisk, setIsAddingRisk] = useState(false);
   const [editingRisk, setEditingRisk] = useState<Risk | null>(null);
@@ -45,18 +47,44 @@ const RiskManager: React.FC<RiskManagerProps> = ({ projectId }) => {
   }, [projectId]);
 
   const loadRisks = () => {
-    // Simulate loading risks - replace with actual db call when implemented
-    setRisks([]);
+    // Simular carregamento de riscos - substituir por chamada real do db quando implementado
+    const mockRisks: Risk[] = [];
+    setRisks(mockRisks);
+    onRiskCountChange?.(mockRisks.length);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (editingRisk) {
-      // Update existing risk
+      // Atualizar risco existente
+      const updatedRisk = {
+        ...editingRisk,
+        ...formData,
+        updatedAt: new Date().toISOString()
+      };
+      
+      const updatedRisks = risks.map(r => r.id === editingRisk.id ? updatedRisk : r);
+      setRisks(updatedRisks);
+      onRiskCountChange?.(updatedRisks.length);
+      
+      historyService.addEntry(projectId, `Risco "${formData.name}" foi editado`, 'Usuário do Sistema');
       setEditingRisk(null);
     } else {
-      // Create new risk
+      // Criar novo risco
+      const newRisk: Risk = {
+        id: Date.now().toString(),
+        projectId,
+        ...formData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      const updatedRisks = [...risks, newRisk];
+      setRisks(updatedRisks);
+      onRiskCountChange?.(updatedRisks.length);
+      
+      historyService.addEntry(projectId, `Novo risco "${formData.name}" foi adicionado`, 'Usuário do Sistema');
     }
     
     setFormData({
@@ -68,7 +96,6 @@ const RiskManager: React.FC<RiskManagerProps> = ({ projectId }) => {
       mitigation: ''
     });
     setIsAddingRisk(false);
-    loadRisks();
   };
 
   const handleEdit = (risk: Risk) => {
@@ -86,7 +113,11 @@ const RiskManager: React.FC<RiskManagerProps> = ({ projectId }) => {
 
   const handleDelete = (risk: Risk) => {
     if (window.confirm(`Tem certeza que deseja excluir o risco "${risk.name}"?`)) {
-      loadRisks();
+      const updatedRisks = risks.filter(r => r.id !== risk.id);
+      setRisks(updatedRisks);
+      onRiskCountChange?.(updatedRisks.length);
+      
+      historyService.addEntry(projectId, `Risco "${risk.name}" foi excluído`, 'Usuário do Sistema');
     }
   };
 

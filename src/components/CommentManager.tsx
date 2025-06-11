@@ -1,24 +1,32 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Trash2, Edit } from 'lucide-react';
 import { db, Comment } from '../lib/database';
+import { historyService } from '../lib/historyService';
 
 interface CommentManagerProps {
   projectId: string;
+  onCommentCountChange?: (count: number) => void;
 }
 
-const CommentManager: React.FC<CommentManagerProps> = ({ projectId }) => {
-  const [comments, setComments] = useState<Comment[]>(db.getProjectComments(projectId));
+const CommentManager: React.FC<CommentManagerProps> = ({ projectId, onCommentCountChange }) => {
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
+  useEffect(() => {
+    loadComments();
+  }, [projectId]);
+
   const loadComments = () => {
-    setComments(db.getProjectComments(projectId));
+    const projectComments = db.getProjectComments(projectId);
+    setComments(projectComments);
+    onCommentCountChange?.(projectComments.length);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,9 +34,12 @@ const CommentManager: React.FC<CommentManagerProps> = ({ projectId }) => {
     if (newComment.trim()) {
       db.createComment({
         projectId,
-        author: 'Usuário', // Added required author field
+        author: 'Usuário',
         text: newComment,
       });
+      
+      historyService.addEntry(projectId, `Novo comentário adicionado: "${newComment.substring(0, 50)}..."`, 'Usuário do Sistema');
+      
       setNewComment('');
       loadComments();
     }
@@ -42,6 +53,9 @@ const CommentManager: React.FC<CommentManagerProps> = ({ projectId }) => {
   const handleSaveEdit = (commentId: string) => {
     if (editText.trim()) {
       db.updateComment(commentId, { text: editText });
+      
+      historyService.addEntry(projectId, `Comentário editado`, 'Usuário do Sistema');
+      
       setEditingComment(null);
       setEditText('');
       loadComments();
@@ -55,6 +69,9 @@ const CommentManager: React.FC<CommentManagerProps> = ({ projectId }) => {
 
   const handleDelete = (commentId: string) => {
     db.deleteComment(commentId);
+    
+    historyService.addEntry(projectId, `Comentário excluído`, 'Usuário do Sistema');
+    
     loadComments();
   };
 

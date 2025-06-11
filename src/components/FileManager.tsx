@@ -1,21 +1,29 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, FileText, Trash2, Download } from 'lucide-react';
 import { db, ProjectFile } from '../lib/database';
+import { historyService } from '../lib/historyService';
 
 interface FileManagerProps {
   projectId: string;
+  onFileCountChange?: (count: number) => void;
 }
 
-const FileManager: React.FC<FileManagerProps> = ({ projectId }) => {
-  const [files, setFiles] = useState<ProjectFile[]>(db.getProjectFiles(projectId));
+const FileManager: React.FC<FileManagerProps> = ({ projectId, onFileCountChange }) => {
+  const [files, setFiles] = useState<ProjectFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    loadFiles();
+  }, [projectId]);
+
   const loadFiles = () => {
-    setFiles(db.getProjectFiles(projectId));
+    const projectFiles = db.getProjectFiles(projectId);
+    setFiles(projectFiles);
+    onFileCountChange?.(projectFiles.length);
   };
 
   const handleFileUpload = (uploadedFiles: FileList | null) => {
@@ -26,12 +34,15 @@ const FileManager: React.FC<FileManagerProps> = ({ projectId }) => {
       reader.onload = () => {
         db.createFile({
           projectId,
-          name: file.name, // Added required name field
+          name: file.name,
           filename: file.name,
           url: reader.result as string,
           size: file.size,
-          type: file.type, // Added required type field
+          type: file.type,
         });
+        
+        historyService.addEntry(projectId, `Arquivo "${file.name}" foi enviado`, 'Usuário do Sistema');
+        
         loadFiles();
       };
       reader.readAsDataURL(file);
@@ -54,8 +65,11 @@ const FileManager: React.FC<FileManagerProps> = ({ projectId }) => {
     setIsDragging(false);
   };
 
-  const handleDelete = (fileId: string) => {
+  const handleDelete = (fileId: string, filename: string) => {
     db.deleteFile(fileId);
+    
+    historyService.addEntry(projectId, `Arquivo "${filename}" foi excluído`, 'Usuário do Sistema');
+    
     loadFiles();
   };
 
@@ -141,7 +155,7 @@ const FileManager: React.FC<FileManagerProps> = ({ projectId }) => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => handleDelete(file.id)}
+                      onClick={() => handleDelete(file.id, file.filename)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

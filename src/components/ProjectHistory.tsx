@@ -8,9 +8,10 @@ import { historyService, HistoryEntry } from '../lib/historyService';
 
 interface ProjectHistoryProps {
   projectId: string;
+  onHistoryCountChange?: (count: number) => void;
 }
 
-const ProjectHistory: React.FC<ProjectHistoryProps> = ({ projectId }) => {
+const ProjectHistory: React.FC<ProjectHistoryProps> = ({ projectId, onHistoryCountChange }) => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
@@ -20,6 +21,7 @@ const ProjectHistory: React.FC<ProjectHistoryProps> = ({ projectId }) => {
   const loadHistory = () => {
     const projectHistory = historyService.getProjectHistory(projectId);
     setHistory(projectHistory);
+    onHistoryCountChange?.(projectHistory.length);
   };
 
   const getActionIcon = (action: string) => {
