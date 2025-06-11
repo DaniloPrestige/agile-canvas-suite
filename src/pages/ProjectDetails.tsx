@@ -15,6 +15,7 @@ import FileManager from '../components/FileManager';
 import ProjectForm from '../components/ProjectForm';
 import RiskManager from '../components/RiskManager';
 import ProjectHistory from '../components/ProjectHistory';
+import ConfirmationDialog from '../components/ConfirmationDialog';
 import jsPDF from 'jspdf';
 
 const ProjectDetails: React.FC = () => {
@@ -184,11 +185,9 @@ const ProjectDetails: React.FC = () => {
       }
       doc.rect(margin, currentY, fillWidth, progressBarHeight, 'F');
       
-      // Adicionar gradiente simulado com retângulo mais claro no topo
+      // Adicionar efeito de brilho simulado
       doc.setFillColor(255, 255, 255);
-      doc.setGState(new doc.GState({opacity: 0.3}));
       doc.rect(margin, currentY, fillWidth, progressBarHeight / 3, 'F');
-      doc.setGState(new doc.GState({opacity: 1}));
     }
     
     // Borda da barra
