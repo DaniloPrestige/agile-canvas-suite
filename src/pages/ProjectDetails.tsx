@@ -540,8 +540,8 @@ const ProjectDetails: React.FC = () => {
           <TabsContent value="tasks">
             <TaskManager 
               projectId={id!} 
-              onTaskCountChange={(count) => {
-                setTaskCount(count);
+              onTaskUpdate={() => {
+                setTaskCount(db.getProjectTasks(id!).length);
                 loadProjectData(); // Recarregar para atualizar o progresso
               }}
             />
@@ -583,9 +583,10 @@ const ProjectDetails: React.FC = () => {
               <DialogTitle>Editar Projeto</DialogTitle>
             </DialogHeader>
             <ProjectForm
-              project={project}
+              initialData={project}
               onSubmit={handleProjectUpdate}
               onCancel={handleCancelEdit}
+              isEditing={true}
             />
           </DialogContent>
         </Dialog>
