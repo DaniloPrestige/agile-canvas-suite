@@ -140,15 +140,11 @@ const AnalyticsDetail: React.FC = () => {
           icon: <DollarSign className="h-6 w-6 text-green-600" />,
           description: 'Análise detalhada da receita total dos projetos',
           value: analytics ? formatCurrencySync(analytics.totalRevenue, 'BRL') : 'Carregando...',
-          content: `A receita total atual é de ${analytics ? formatCurrencySync(analytics.totalRevenue, 'BRL') : 'carregando'}, baseada em ${projects.length} projetos. Esta análise inclui tendências mensais, comparações com períodos anteriores e projeções futuras.`,
-          chartData: [
-            { month: 'Jan', value: analytics ? analytics.totalRevenue * 0.15 : 0 },
-            { month: 'Fev', value: analytics ? analytics.totalRevenue * 0.18 : 0 },
-            { month: 'Mar', value: analytics ? analytics.totalRevenue * 0.22 : 0 },
-            { month: 'Abr', value: analytics ? analytics.totalRevenue * 0.20 : 0 },
-            { month: 'Mai', value: analytics ? analytics.totalRevenue * 0.25 : 0 },
-            { month: 'Jun', value: analytics ? analytics.totalRevenue * 0.30 : 0 }
-          ]
+          content: `A receita total atual é de ${analytics ? formatCurrencySync(analytics.totalRevenue, 'BRL') : 'carregando'}, baseada em ${projects.length} projetos ativos no sistema.`,
+          chartData: projects.map((project, index) => ({
+            name: project.name.substring(0, 15),
+            receita: project.finalValue || project.estimatedValue
+          }))
         };
       case 'budget':
         return {
@@ -158,9 +154,8 @@ const AnalyticsDetail: React.FC = () => {
           value: analytics ? formatCurrencySync(analytics.totalBudget, 'BRL') : 'Carregando...',
           content: `O orçamento total planejado é de ${analytics ? formatCurrencySync(analytics.totalBudget, 'BRL') : 'carregando'}. A variação atual é de ${analytics ? analytics.variancePercentage.toFixed(1) : 0}% em relação ao planejado.`,
           chartData: [
-            { category: 'Planejado', value: analytics ? analytics.totalBudget : 0 },
-            { category: 'Executado', value: analytics ? analytics.totalRevenue : 0 },
-            { category: 'Variação', value: analytics ? Math.abs(analytics.budgetVariance) : 0 }
+            { category: 'Planejado', valor: analytics ? analytics.totalBudget : 0 },
+            { category: 'Executado', valor: analytics ? analytics.totalRevenue : 0 }
           ]
         };
       case 'variance':
@@ -184,9 +179,9 @@ const AnalyticsDetail: React.FC = () => {
           value: analytics ? `${analytics.onTimeDelivery.toFixed(1)}%` : 'Carregando...',
           content: `O indicador de qualidade atual é de ${analytics ? analytics.onTimeDelivery.toFixed(1) : 0}% baseado na taxa de entrega no prazo. ${analytics ? analytics.completedProjects : 0} projetos foram concluídos com sucesso.`,
           chartData: [
-            { status: 'No Prazo', value: analytics ? analytics.activeProjects - analytics.delayedProjects : 0 },
-            { status: 'Atrasados', value: analytics ? analytics.delayedProjects : 0 },
-            { status: 'Concluídos', value: analytics ? analytics.completedProjects : 0 }
+            { status: 'No Prazo', value: analytics ? analytics.activeProjects - analytics.delayedProjects : 0, fill: '#22c55e' },
+            { status: 'Atrasados', value: analytics ? analytics.delayedProjects : 0, fill: '#ef4444' },
+            { status: 'Concluídos', value: analytics ? analytics.completedProjects : 0, fill: '#3b82f6' }
           ]
         };
       case 'delivery':
@@ -196,14 +191,11 @@ const AnalyticsDetail: React.FC = () => {
           description: 'Análise da pontualidade nas entregas',
           value: analytics ? `${analytics.onTimeDelivery.toFixed(1)}%` : 'Carregando...',
           content: `A taxa de entrega no prazo é de ${analytics ? analytics.onTimeDelivery.toFixed(1) : 0}%. ${analytics ? analytics.delayedProjects : 0} projetos estão atrasados de um total de ${analytics ? analytics.activeProjects : 0} projetos ativos.`,
-          chartData: [
-            { month: 'Jan', entregues: 85, atrasados: 15 },
-            { month: 'Fev', entregues: 90, atrasados: 10 },
-            { month: 'Mar', entregues: 88, atrasados: 12 },
-            { month: 'Abr', entregues: 92, atrasados: 8 },
-            { month: 'Mai', entregues: analytics ? analytics.onTimeDelivery : 95, atrasados: analytics ? 100 - analytics.onTimeDelivery : 5 },
-            { month: 'Jun', entregues: analytics ? analytics.onTimeDelivery : 95, atrasados: analytics ? 100 - analytics.onTimeDelivery : 5 }
-          ]
+          chartData: projects.map(p => ({
+            projeto: p.name.substring(0, 15),
+            status: p.status === 'Atrasado' ? 'Atrasado' : 'No Prazo',
+            valor: p.status === 'Atrasado' ? 0 : 100
+          }))
         };
       case 'ebitda':
         return {
@@ -211,13 +203,11 @@ const AnalyticsDetail: React.FC = () => {
           icon: <DollarSign className="h-6 w-6 text-green-600" />,
           description: 'Lucro antes de juros, impostos, depreciação e amortização',
           value: analytics ? formatCurrencySync(analytics.ebitda, 'BRL') : 'Carregando...',
-          content: `O EBITDA atual é de ${analytics ? formatCurrencySync(analytics.ebitda, 'BRL') : 'carregando'}, representando ${analytics ? ((analytics.ebitda / analytics.totalRevenue) * 100).toFixed(1) : 0}% da receita total. Esta métrica indica a eficiência operacional da empresa.`,
-          chartData: [
-            { period: 'Q1', ebitda: analytics ? analytics.ebitda * 0.20 : 0 },
-            { period: 'Q2', ebitda: analytics ? analytics.ebitda * 0.25 : 0 },
-            { period: 'Q3', ebitda: analytics ? analytics.ebitda * 0.28 : 0 },
-            { period: 'Q4', ebitda: analytics ? analytics.ebitda * 0.27 : 0 }
-          ]
+          content: `O EBITDA atual é de ${analytics ? formatCurrencySync(analytics.ebitda, 'BRL') : 'carregando'}, representando ${analytics ? ((analytics.ebitda / analytics.totalRevenue) * 100).toFixed(1) : 0}% da receita total.`,
+          chartData: projects.map(p => ({
+            projeto: p.name.substring(0, 15),
+            ebitda: (p.finalValue || p.estimatedValue) * 0.28
+          }))
         };
       case 'margin':
         return {
@@ -225,9 +215,9 @@ const AnalyticsDetail: React.FC = () => {
           icon: <BarChart3 className="h-6 w-6 text-blue-600" />,
           description: 'Análise da margem de lucro líquida',
           value: analytics ? `${analytics.liquidMargin}%` : 'Carregando...',
-          content: `A margem líquida atual é de ${analytics ? analytics.liquidMargin : 0}%. Esta métrica mostra a eficiência da empresa em converter receita em lucro líquido após todos os custos e despesas.`,
+          content: `A margem líquida atual é de ${analytics ? analytics.liquidMargin : 0}%. Esta métrica mostra a eficiência da empresa em converter receita em lucro líquido.`,
           chartData: projects.map(p => ({
-            project: p.name.substring(0, 10),
+            projeto: p.name.substring(0, 15),
             margem: ((p.finalValue || p.estimatedValue) / p.estimatedValue * 100) - 100
           }))
         };
@@ -237,14 +227,12 @@ const AnalyticsDetail: React.FC = () => {
           icon: <TrendingUp className="h-6 w-6 text-red-600" />,
           description: 'Análise do fluxo de caixa operacional',
           value: analytics ? formatCurrencySync(analytics.cashFlow, 'BRL') : 'Carregando...',
-          content: `O fluxo de caixa operacional é de ${analytics ? formatCurrencySync(analytics.cashFlow, 'BRL') : 'carregando'}. Este valor representa a capacidade da empresa de gerar dinheiro através de suas operações principais.`,
-          chartData: [
-            { month: 'Jan', entrada: analytics ? analytics.cashFlow * 0.15 : 0, saida: analytics ? analytics.cashFlow * 0.12 : 0 },
-            { month: 'Fev', entrada: analytics ? analytics.cashFlow * 0.18 : 0, saida: analytics ? analytics.cashFlow * 0.15 : 0 },
-            { month: 'Mar', entrada: analytics ? analytics.cashFlow * 0.22 : 0, saida: analytics ? analytics.cashFlow * 0.18 : 0 },
-            { month: 'Abr', entrada: analytics ? analytics.cashFlow * 0.20 : 0, saida: analytics ? analytics.cashFlow * 0.16 : 0 },
-            { month: 'Mai', entrada: analytics ? analytics.cashFlow * 0.25 : 0, saida: analytics ? analytics.cashFlow * 0.20 : 0 }
-          ]
+          content: `O fluxo de caixa operacional é de ${analytics ? formatCurrencySync(analytics.cashFlow, 'BRL') : 'carregando'}.`,
+          chartData: projects.map(p => ({
+            projeto: p.name.substring(0, 15),
+            entrada: p.finalValue || p.estimatedValue,
+            saida: p.estimatedValue * 0.8
+          }))
         };
       case 'roi':
         return {
@@ -252,9 +240,9 @@ const AnalyticsDetail: React.FC = () => {
           icon: <Target className="h-6 w-6 text-purple-600" />,
           description: 'Análise do retorno sobre investimento',
           value: analytics ? `${analytics.averageROI}%` : 'Carregando...',
-          content: `O ROI médio é de ${analytics ? analytics.averageROI : 0}% baseado no portfolio de projetos atual. Este indicador mede a eficiência dos investimentos realizados.`,
+          content: `O ROI médio é de ${analytics ? analytics.averageROI : 0}% baseado no portfolio de projetos atual.`,
           chartData: projects.map(p => ({
-            project: p.name.substring(0, 10),
+            projeto: p.name.substring(0, 15),
             roi: ((p.finalValue || p.estimatedValue) / p.estimatedValue - 1) * 100
           }))
         };
@@ -264,10 +252,10 @@ const AnalyticsDetail: React.FC = () => {
           icon: <Clock className="h-6 w-6 text-yellow-600" />,
           description: 'Tempo de recuperação do investimento',
           value: analytics ? `${analytics.paybackMonths} meses` : 'Carregando...',
-          content: `O período médio de payback é de ${analytics ? analytics.paybackMonths : 0} meses. Este tempo representa quanto demora para recuperar o investimento inicial dos projetos.`,
+          content: `O período médio de payback é de ${analytics ? analytics.paybackMonths : 0} meses.`,
           chartData: projects.map(p => ({
-            project: p.name.substring(0, 10),
-            payback: Math.random() * 24 + 6 // Simulação baseada no projeto
+            projeto: p.name.substring(0, 15),
+            payback: Math.floor((p.estimatedValue / ((p.finalValue || p.estimatedValue) / 12)) || 12)
           }))
         };
       case 'npv':
@@ -276,9 +264,9 @@ const AnalyticsDetail: React.FC = () => {
           icon: <TrendingUp className="h-6 w-6 text-indigo-600" />,
           description: 'Valor presente líquido dos projetos',
           value: analytics ? formatCurrencySync(analytics.npv, 'BRL') : 'Carregando...',
-          content: `O NPV total do portfolio é de ${analytics ? formatCurrencySync(analytics.npv, 'BRL') : 'carregando'}. Um NPV positivo indica que os projetos geram valor para a empresa.`,
+          content: `O NPV total do portfolio é de ${analytics ? formatCurrencySync(analytics.npv, 'BRL') : 'carregando'}.`,
           chartData: projects.map(p => ({
-            project: p.name.substring(0, 10),
+            projeto: p.name.substring(0, 15),
             npv: (p.finalValue || p.estimatedValue) * 0.45
           }))
         };
@@ -292,6 +280,103 @@ const AnalyticsDetail: React.FC = () => {
           chartData: []
         };
     }
+  };
+
+  const renderChart = (details: any) => {
+    if (!details.chartData || details.chartData.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+          Nenhum dado disponível
+        </div>
+      );
+    }
+
+    // Para indicadores de qualidade, usar PieChart
+    if (indicator === 'quality') {
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={details.chartData}
+              dataKey="value"
+              nameKey="status"
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              label={({ status, value }) => `${status}: ${value}`}
+            >
+              {details.chartData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    // Para orçamento, usar BarChart
+    if (indicator === 'budget') {
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={details.chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="category" />
+            <YAxis />
+            <Bar dataKey="valor" fill="#3b82f6" />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    // Para variação, usar BarChart com duas barras
+    if (indicator === 'variance') {
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={details.chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Bar dataKey="planejado" fill="#3b82f6" name="Planejado" />
+            <Bar dataKey="executado" fill="#10b981" name="Executado" />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    // Para cashflow, usar BarChart com entrada e saída
+    if (indicator === 'cashflow') {
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={details.chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="projeto" />
+            <YAxis />
+            <Bar dataKey="entrada" fill="#10b981" name="Entrada" />
+            <Bar dataKey="saida" fill="#ef4444" name="Saída" />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    // Para todos os outros, usar BarChart simples
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={details.chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="projeto" />
+          <YAxis />
+          <Bar dataKey={
+            indicator === 'ebitda' ? 'ebitda' :
+            indicator === 'margin' ? 'margem' :
+            indicator === 'roi' ? 'roi' :
+            indicator === 'payback' ? 'payback' :
+            indicator === 'npv' ? 'npv' :
+            indicator === 'delivery' ? 'valor' :
+            'receita'
+          } fill="#3b82f6" />
+        </BarChart>
+      </ResponsiveContainer>
+    );
   };
 
   if (!analytics) {
@@ -355,14 +440,7 @@ const AnalyticsDetail: React.FC = () => {
                 <CardTitle>Análise Gráfica</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={details.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
+                {renderChart(details)}
               </CardContent>
             </Card>
 
