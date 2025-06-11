@@ -4,14 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, User, FileText, CheckSquare, MessageSquare, AlertTriangle, Edit } from 'lucide-react';
 import { format } from 'date-fns';
-
-export type HistoryEntry = {
-  id: string;
-  projectId: string;
-  user: string;
-  action: string;
-  timestamp: string;
-};
+import { historyService, HistoryEntry } from '../lib/historyService';
 
 interface ProjectHistoryProps {
   projectId: string;
@@ -25,8 +18,8 @@ const ProjectHistory: React.FC<ProjectHistoryProps> = ({ projectId }) => {
   }, [projectId]);
 
   const loadHistory = () => {
-    // Simulate loading history - replace with actual db call when implemented
-    setHistory([]);
+    const projectHistory = historyService.getProjectHistory(projectId);
+    setHistory(projectHistory);
   };
 
   const getActionIcon = (action: string) => {

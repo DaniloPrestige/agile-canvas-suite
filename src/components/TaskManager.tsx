@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +12,7 @@ import { CalendarIcon, Plus, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { db, Task } from '../lib/database';
+import { historyService } from '../lib/historyService';
 
 interface TaskManagerProps {
   projectId: string;
@@ -49,17 +49,14 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
   };
 
   const updateProjectProgress = () => {
-    // Força atualização do progresso do projeto
     if (onTaskUpdate) {
       onTaskUpdate();
     }
     
-    // Atualiza o progresso automaticamente no banco
     const currentTasks = db.getProjectTasks(projectId);
     const completedTasks = currentTasks.filter(task => task.status === 'Concluída').length;
     const progress = currentTasks.length > 0 ? Math.round((completedTasks / currentTasks.length) * 100) : 0;
     
-    // Atualiza o projeto com o novo progresso
     const project = db.getProject(projectId);
     if (project) {
       db.updateProject(projectId, { 
@@ -97,8 +94,16 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
 
     if (editingTask) {
       db.updateTask(editingTask.id, taskData);
+      historyService.addEntry(projectId, `Tarefa "${formData.name}" foi editada`, 'Usuário do Sistema', {
+        taskId: editingTask.id,
+        changes: taskData
+      });
     } else {
-      db.createTask(taskData);
+      const newTask = db.createTask(taskData);
+      historyService.addEntry(projectId, `Nova tarefa "${formData.name}" foi criada`, 'Usuário do Sistema', {
+        taskId: newTask.id,
+        taskData
+      });
     }
     
     loadTasks();
@@ -119,18 +124,25 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
     setShowForm(true);
   };
 
-  const handleDeleteTask = (id: string) => {
-    db.deleteTask(id);
+  const handleDeleteTask = (task: Task) => {
+    db.deleteTask(task.id);
+    historyService.addEntry(projectId, `Tarefa "${task.name}" foi excluída`, 'Usuário do Sistema', {
+      deletedTask: task
+    });
     loadTasks();
     updateProjectProgress();
   };
 
-  const handleTaskStatusChange = (taskId: string, checked: boolean) => {
+  const handleTaskStatusChange = (task: Task, checked: boolean) => {
     const newStatus = checked ? 'Concluída' : 'Pendente';
-    db.updateTask(taskId, { status: newStatus });
+    db.updateTask(task.id, { status: newStatus });
+    historyService.addEntry(projectId, `Tarefa "${task.name}" foi marcada como ${newStatus.toLowerCase()}`, 'Usuário do Sistema', {
+      taskId: task.id,
+      previousStatus: task.status,
+      newStatus
+    });
     loadTasks();
     
-    // Atualiza o progresso em tempo real
     setTimeout(() => {
       updateProjectProgress();
     }, 100);
@@ -141,7 +153,6 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
     setDueDateOpen(false);
   };
 
-  // Calcula o progresso atual
   const currentProgress = tasks.length > 0 ? 
     Math.round((tasks.filter(task => task.status === 'Concluída').length / tasks.length) * 100) : 0;
 
@@ -182,6 +193,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
         {showForm && (
           <div className="rounded-md border bg-card text-card-foreground shadow-sm p-4">
             <form onSubmit={handleSubmit} className="space-y-4">
+              
               <div>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -355,7 +367,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
                   <TooltipTrigger asChild>
                     <Checkbox
                       checked={task.status === 'Concluída'}
-                      onCheckedChange={(checked) => handleTaskStatusChange(task.id, checked as boolean)}
+                      onCheckedChange={(checked) => handleTaskStatusChange(task, checked as boolean)}
                       className="flex-shrink-0"
                     />
                   </TooltipTrigger>
@@ -391,7 +403,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskUpdate }) =>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>

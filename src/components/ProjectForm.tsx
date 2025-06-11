@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit, onCanc
     name: initialData?.name || '',
     client: initialData?.client || '',
     responsible: initialData?.responsible || '',
-    teamMembers: initialData?.teamMembers || '',
     priority: initialData?.priority || 'Média' as const,
     status: initialData?.status || 'Pendente' as const,
     phase: initialData?.phase || 'Iniciação' as const,
@@ -35,6 +35,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit, onCanc
     description: initialData?.description || '',
     tags: initialData?.tags || [] as string[],
   });
+
+  // Novo estado para pessoas envolvidas como array
+  const [involvedPeople, setInvolvedPeople] = useState<string[]>(
+    initialData?.teamMembers ? initialData.teamMembers.split(',').map(person => person.trim()).filter(Boolean) : []
+  );
 
   const [startDate, setStartDate] = useState<Date | undefined>(
     initialData?.startDate ? new Date(initialData.startDate) : undefined
@@ -80,6 +85,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit, onCanc
       estimatedValue: parseFloat(formData.estimatedValue.replace(',', '.')) || 0,
       finalValue: parseFloat(formData.finalValue.replace(',', '.')) || 0,
       progress: initialData?.progress || 0,
+      teamMembers: involvedPeople.join(', '), // Junta as pessoas em uma string
     };
 
     if (initialData) {
@@ -154,18 +160,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit, onCanc
               <div>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Label htmlFor="teamMembers" className="text-sm cursor-help">Gestão de Pessoas</Label>
+                    <Label htmlFor="involvedPeople" className="text-sm cursor-help">Pessoas Envolvidas</Label>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Pessoas envolvidas no projeto (opcional)</p>
+                    <p>Pessoas envolvidas no projeto (digite e pressione Enter)</p>
                   </TooltipContent>
                 </Tooltip>
-                <Input
-                  id="teamMembers"
-                  value={formData.teamMembers}
-                  onChange={(e) => setFormData({ ...formData, teamMembers: e.target.value })}
-                  placeholder="Ex: João, Maria, Pedro"
-                  className="h-8 text-sm"
+                <TagInput
+                  tags={involvedPeople}
+                  onChange={setInvolvedPeople}
+                  placeholder="Digite um nome e pressione Enter"
                 />
               </div>
             </div>
@@ -274,10 +278,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit, onCanc
               <div>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Label className="text-sm cursor-help">Data de Fim</Label>
+                    <Label className="text-sm cursor-help">Estimativa de Finalização</Label>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Data planejada para finalizar o projeto</p>
+                    <p>Data estimada para finalizar o projeto</p>
                   </TooltipContent>
                 </Tooltip>
                 <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
