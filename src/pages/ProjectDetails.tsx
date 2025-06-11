@@ -15,7 +15,6 @@ import FileManager from '../components/FileManager';
 import ProjectForm from '../components/ProjectForm';
 import RiskManager from '../components/RiskManager';
 import ProjectHistory from '../components/ProjectHistory';
-import ConfirmationDialog from '../components/ConfirmationDialog';
 import jsPDF from 'jspdf';
 
 const ProjectDetails: React.FC = () => {
@@ -59,9 +58,9 @@ const ProjectDetails: React.FC = () => {
   };
 
   const getProgressBarColor = (progress: number) => {
-    if (progress < 30) return 'bg-red-500';
-    if (progress < 70) return 'bg-yellow-500';
-    return 'bg-green-500';
+    if (progress < 30) return 'from-red-400 via-red-500 to-red-600';
+    if (progress < 70) return 'from-yellow-400 via-yellow-500 to-yellow-600';
+    return 'from-green-400 via-green-500 to-green-600';
   };
 
   const handleEditProject = () => {
@@ -128,9 +127,9 @@ const ProjectDetails: React.FC = () => {
       ['Responsável:', project.responsible || 'N/A'],
       ['Status:', project.status || 'N/A'],
       ['Prioridade:', project.priority || 'N/A'],
-      ['Fase:', project.phase || 'N/A'],
       ['Data Início:', project.startDate || 'N/A'],
-      ['Estimativa de Finalização:', project.endDate || 'N/A'],
+      ['Previsão Fim:', project.endDate || 'N/A'],
+      ['Fase:', project.phase || 'N/A'],
     ];
 
     // Desenhar tabela de informações
@@ -157,20 +156,20 @@ const ProjectDetails: React.FC = () => {
       doc.text(row[1], margin + col1Width + 2, y + 4);
     });
 
-    currentY = startY + (projectInfo.length * rowHeight) + 10;
+    currentY = startY + (projectInfo.length * rowHeight) + 15;
 
-    // Barra de progresso
+    // Adicionar barra de progresso estilizada
     const progress = calculateProjectProgress();
     doc.setFont('helvetica', 'bold');
     doc.text(`Progresso: ${progress}%`, margin, currentY);
     currentY += 8;
 
-    // Desenhar barra de progresso
+    // Desenhar barra de progresso estilizada
     const progressBarWidth = 120;
-    const progressBarHeight = 8;
+    const progressBarHeight = 12;
     
-    // Background da barra
-    doc.setFillColor(230, 230, 230);
+    // Background da barra com sombra
+    doc.setFillColor(220, 220, 220);
     doc.rect(margin, currentY, progressBarWidth, progressBarHeight, 'F');
     
     // Preenchimento da barra baseado no progresso
@@ -184,6 +183,12 @@ const ProjectDetails: React.FC = () => {
         doc.setFillColor(34, 197, 94); // Verde
       }
       doc.rect(margin, currentY, fillWidth, progressBarHeight, 'F');
+      
+      // Adicionar gradiente simulado com retângulo mais claro no topo
+      doc.setFillColor(255, 255, 255);
+      doc.setGState(new doc.GState({opacity: 0.3}));
+      doc.rect(margin, currentY, fillWidth, progressBarHeight / 3, 'F');
+      doc.setGState(new doc.GState({opacity: 1}));
     }
     
     // Borda da barra
@@ -226,6 +231,37 @@ const ProjectDetails: React.FC = () => {
 
       currentY += (financialInfo.length * rowHeight) + 15;
     }
+
+    // Métricas de performance
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('MÉTRICAS DE PERFORMANCE', margin, currentY);
+    currentY += 10;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    
+    const metricsInfo = [
+      ['Taxa de Conclusão:', `${progress}%`],
+      ['Tarefas:', `${tasks.filter(task => task.status === 'Concluída').length}/${tasks.length}`],
+    ];
+
+    metricsInfo.forEach((row, index) => {
+      const y = currentY + (index * rowHeight);
+      
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 249, 250);
+        doc.rect(margin, y - 2, col1Width + col2Width, rowHeight, 'F');
+      }
+      
+      doc.setFont('helvetica', 'bold');
+      doc.text(row[0], margin + 2, y + 4);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.text(row[1], margin + col1Width + 2, y + 4);
+    });
+
+    currentY += (metricsInfo.length * rowHeight) + 15;
 
     // Descrição
     if (project.description) {
