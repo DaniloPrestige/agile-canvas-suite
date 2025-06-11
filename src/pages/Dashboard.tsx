@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import StatusCard from '../components/StatusCard';
@@ -136,96 +135,70 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatusCard
             title="Projetos Ativos"
-            value={activeProjects.length.toString()}
+            count={activeProjects.length.toString()}
+            color="blue"
+            subtitle={`${Math.round((activeProjects.length / Math.max(allProjects.length, 1)) * 100)}% do total`}
             icon={<Activity className="h-6 w-6" />}
-            trend={activeProjects.length > finishedProjects.length ? "up" : "down"}
-            trendValue={`${Math.round((activeProjects.length / Math.max(allProjects.length, 1)) * 100)}%`}
           />
           
           <StatusCard
             title="Taxa de Conclusão"
-            value={`${Math.round((finishedProjects.length / Math.max(allProjects.length, 1)) * 100)}%`}
+            count={`${Math.round((finishedProjects.length / Math.max(allProjects.length, 1)) * 100)}%`}
+            color="green"
+            subtitle={`${finishedProjects.length} concluídos`}
             icon={<CheckCircle className="h-6 w-6" />}
-            trend="up"
-            trendValue={`${finishedProjects.length} concluídos`}
           />
           
           <StatusCard
             title="Valor Total"
-            value={formatCurrency(totalValue, 'BRL')}
+            count={formatCurrency(totalValue, 'BRL')}
+            color="purple"
+            subtitle={`${formatCurrency(completedValue, 'BRL')} entregue`}
             icon={<DollarSign className="h-6 w-6" />}
-            trend="up"
-            trendValue={`${formatCurrency(completedValue, 'BRL')} entregue`}
           />
           
           <StatusCard
             title="Projetos Atrasados"
-            value={overdueProjects.toString()}
+            count={overdueProjects.toString()}
+            color={overdueProjects > 0 ? "red" : "green"}
+            subtitle={overdueProjects > 0 ? "Requer atenção" : "Em dia"}
             icon={<AlertTriangle className="h-6 w-6" />}
-            trend={overdueProjects > 0 ? "down" : "up"}
-            trendValue={overdueProjects > 0 ? "Requer atenção" : "Em dia"}
           />
         </div>
 
         {/* Cards de Métricas Secundárias */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Duração Média</CardTitle>
-              <Timer className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{avgProjectDuration()} dias</div>
-              <p className="text-xs text-muted-foreground">
-                Tempo médio de projeto
-              </p>
-            </CardContent>
-          </Card>
+          <StatusCard
+            title="Duração Média"
+            count={`${avgProjectDuration()} dias`}
+            color="gray"
+            subtitle="Tempo médio de projeto"
+            icon={<Timer className="h-6 w-6" />}
+          />
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Projetos Este Mês</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {projectsPerMonth[projectsPerMonth.length - 1]?.projects || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Novos projetos iniciados
-              </p>
-            </CardContent>
-          </Card>
+          <StatusCard
+            title="Projetos Este Mês"
+            count={(projectsPerMonth[projectsPerMonth.length - 1]?.projects || 0).toString()}
+            color="blue"
+            subtitle="Novos projetos iniciados"
+            icon={<Calendar className="h-6 w-6" />}
+          />
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Eficiência</CardTitle>
-              <Award className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {allProjects.length > 0 ? Math.round((finishedProjects.length / allProjects.length) * 100) : 0}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Taxa de entrega no prazo
-              </p>
-            </CardContent>
-          </Card>
+          <StatusCard
+            title="Eficiência"
+            count={`${allProjects.length > 0 ? Math.round((finishedProjects.length / allProjects.length) * 100) : 0}%`}
+            color="green"
+            subtitle="Taxa de entrega no prazo"
+            icon={<Award className="h-6 w-6" />}
+          />
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Média</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(totalValue / Math.max(allProjects.length, 1), 'BRL')}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Por projeto
-              </p>
-            </CardContent>
-          </Card>
+          <StatusCard
+            title="Receita Média"
+            count={formatCurrency(totalValue / Math.max(allProjects.length, 1), 'BRL')}
+            color="purple"
+            subtitle="Por projeto"
+            icon={<TrendingUp className="h-6 w-6" />}
+          />
         </div>
 
         {/* Enhanced Overall Progress Card */}
