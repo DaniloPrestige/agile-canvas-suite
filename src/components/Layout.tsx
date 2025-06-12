@@ -1,23 +1,27 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, BarChart3, TrendingUp } from 'lucide-react';
-
 interface LayoutProps {
   children: React.ReactNode;
 }
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({
+  children
+}) => {
   const location = useLocation();
-
-  const navigation = [
-    { name: 'Início', href: '/', icon: Home },
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-    { name: 'Analytics', href: '/analytics', icon: TrendingUp },
-  ];
-
-  return (
-    <div className="min-h-screen bg-background">
+  const navigation = [{
+    name: 'Início',
+    href: '/',
+    icon: Home
+  }, {
+    name: 'Dashboard',
+    href: '/dashboard',
+    icon: BarChart3
+  }, {
+    name: 'Analytics',
+    href: '/analytics',
+    icon: TrendingUp
+  }];
+  return <div className="min-h-screen bg-background">
       <header className="bg-card border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -29,31 +33,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
 
             <nav className="flex space-x-8">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.href;
-                
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'text-blue-600 bg-blue-50'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                    }`}
-                  >
+              {navigation.map(item => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.href;
+              return <Link key={item.name} to={item.href} className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}>
                     <Icon className="w-4 h-4 mr-2" />
                     {item.name}
-                  </Link>
-                );
-              })}
+                  </Link>;
+            })}
             </nav>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl px-4 sm:px-6 lg:px-8 py-8 mx-0">
         {children}
       </main>
 
@@ -63,17 +56,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <p className="text-sm text-muted-foreground">
               © 2025 Sistema de Gerência de Projetos - Criado por: Danilo Araujo
             </p>
-            <a
-              href="mailto:danilo.s.loureiro2@gmail.com"
-              className="text-sm text-blue-600 hover:text-blue-700"
-            >
+            <a href="mailto:danilo.s.loureiro2@gmail.com" className="text-sm text-blue-600 hover:text-blue-700">
               Obter ajuda
             </a>
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Layout;
